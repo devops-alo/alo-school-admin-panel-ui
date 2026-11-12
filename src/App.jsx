@@ -44,7 +44,7 @@ import {
   setPrimaryBatch,
   updateCourseBatch,
 } from './api/Serviceapi';
-import SubadminManagement from './sections/SubAdminManagement/SubadminManagement';
+import SubadminManagement from './sections/SubAdminManagement/SubAdminManagement';
 import Settings from './sections/Settings/Settings';
 import DailyQuotes from './sections/DailyQuotes/DailyQuotes';
 

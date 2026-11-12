@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import style from "./SubAdminManagementModel.module.css";
+import style from "./SubadminManagementModel.module.css";
 import { AVAILABLE_ACTIONS } from "../../sections/config/permissions";
 import { getUserRole } from "../../sections/utils/permissions";
 import { FaEdit } from "react-icons/fa";
