@@ -3,6 +3,7 @@ import AddCourseModal from "./AddCourseModel";
 import { useState } from "react";
 import { BookIcon, EditIcon, PlusIcon } from "../../components/icons/Icons";
 import Loader from "../../component/loader/Loader";
+import { hasActionAccess } from "../utils/permissions";
 
 const CourseTable = ({ courses, loading, onCreateCourse, onEditCourse }) => {
   const [formState, setFormState] = useState({ open: false, course: null });
@@ -10,11 +11,20 @@ const CourseTable = ({ courses, loading, onCreateCourse, onEditCourse }) => {
   const openCreate = () => setFormState({ open: true, course: null });
   const openEdit = (course) => setFormState({ open: true, course });
   const closeForm = () => setFormState({ open: false, course: null });
+  const canView = hasActionAccess("/course", "view");
+  const canAdd = hasActionAccess("/course", "add");
+  const canEdit = hasActionAccess("/course", "edit");
+  const canDelete = hasActionAccess("/course", "delete");
+  const canShowActions = canEdit || canDelete;
 
   const handleSubmit = async (payload) => {
     if (formState.course) {
+      if (!canEdit) return;
+
       await onEditCourse(formState.course.id, payload);
     } else {
+      if (!canAdd) return;
+
       await onCreateCourse(payload);
     }
   };
@@ -26,10 +36,16 @@ const CourseTable = ({ courses, loading, onCreateCourse, onEditCourse }) => {
           Courses
           <span className={styles.headCount}>{courses.length}</span>
         </h2>
-        <button type="button" className={styles.primaryBtn} onClick={openCreate}>
-          <PlusIcon width={17} height={17} />
-          Add Course
-        </button>
+        {canAdd && (
+          <button
+            type="button"
+            className={styles.primaryBtn}
+            onClick={openCreate}
+          >
+            <PlusIcon width={17} height={17} />
+            Add Course
+          </button>
+        )}
       </div>
 
       <section className={styles.card}>
@@ -42,10 +58,16 @@ const CourseTable = ({ courses, loading, onCreateCourse, onEditCourse }) => {
             <BookIcon width={38} height={38} />
             <h3>No courses yet</h3>
             <p>Create your first course. Courses are shared across batches.</p>
-            <button type="button" className={styles.primaryBtn} onClick={openCreate}>
-              <PlusIcon width={17} height={17} />
-              Add Course
-            </button>
+            {canAdd && (
+              <button
+                type="button"
+                className={styles.primaryBtn}
+                onClick={openCreate}
+              >
+                <PlusIcon width={17} height={17} />
+                Add Course
+              </button>
+            )}
           </div>
         ) : (
           <div className={styles.tableWrap}>
@@ -56,7 +78,9 @@ const CourseTable = ({ courses, loading, onCreateCourse, onEditCourse }) => {
                   <th>Duration</th>
                   <th>Semesters</th>
                   <th>Used In</th>
-                  <th className={styles.actionsCol}>Action</th>
+                  {canShowActions && (
+                    <th className={styles.actionsCol}>Action</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -80,16 +104,24 @@ const CourseTable = ({ courses, loading, onCreateCourse, onEditCourse }) => {
                         {c.batchCount === 1 ? "Batch" : "Batches"}
                       </span>
                     </td>
-                    <td className={styles.actionsCol}>
-                      <button
-                        type="button"
-                        className={styles.editBtn}
-                        aria-label={`Edit ${c.courseName}`}
-                        onClick={() => openEdit(c)}
-                      >
-                        <EditIcon width={16} height={16} />
-                      </button>
-                    </td>
+                    {canShowActions && (
+                      <td className={styles.actionsCol}>
+                        <div className={styles.rowActions}>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              className={styles.editBtn}
+                              aria-label={`Edit ${c.courseName}`}
+                              onClick={() => openEdit(c)}
+                            >
+                              <EditIcon width={16} height={16} />
+                            </button>
+                          )}
+
+                          {/* Add the Delete button here when delete functionality is implemented. */}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

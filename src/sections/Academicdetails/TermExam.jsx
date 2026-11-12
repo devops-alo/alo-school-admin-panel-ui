@@ -11,8 +11,11 @@ import Loader from "../../component/loader/Loader";
 import { IoClose } from "react-icons/io5";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
+import { hasActionAccess } from "../utils/permissions";
 
 const TermExam = () => {
+  const canView = hasActionAccess("/academic", "view");
+  const canEdit = hasActionAccess("/academic", "edit");
   const [performance, setPerformance] = useState([]);
   const [users, setUsers] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -166,7 +169,9 @@ const fetchPerformance = async () => {
 
   const termStartIndex = filteredData.length === 0 ? 0 : startIndex + 1;
   const termEndIndex = Math.min(page * rowsPerPage, filteredData.length);
-
+  if (!canView) {
+    return <div>You don't have permission to view term details.</div>;
+  }
   return (
     <div className={styles.container}>
       <div className={styles.headerBar}>
@@ -200,15 +205,14 @@ const fetchPerformance = async () => {
               </option>
             ))}
           </select>
-<select value={term} onChange={(e) => setTerm(e.target.value)}>
-  <option value="">All Terms</option>
-  {termOptions.map((t) => (
-    <option key={t} value={t}>
-      {t}
-    </option>
-  ))}
-</select>
-
+          <select value={term} onChange={(e) => setTerm(e.target.value)}>
+            <option value="">All Terms</option>
+            {termOptions.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
 
           <input
             className={styles.search}
@@ -221,7 +225,10 @@ const fetchPerformance = async () => {
             }}
           />
 
-          {(courseId?.toString().trim() || batchId?.toString().trim() || term?.toString().trim() || search?.toString().trim()) && (
+          {(courseId?.toString().trim() ||
+            batchId?.toString().trim() ||
+            term?.toString().trim() ||
+            search?.toString().trim()) && (
             <button className={styles.clear} onClick={handleClearFilters}>
               <IoClose />
             </button>
@@ -272,15 +279,17 @@ const fetchPerformance = async () => {
                     <td>{row.total}</td>
                     <td>{row.percentage}</td>
                     <td>
-                      <button
-                        className={styles.viewBtn}
-                        onClick={() => {
-                          setViewRecord(row);
-                          setViewModal(true);
-                        }}
-                      >
-                        View
-                      </button>
+                      {canView && (
+                        <button
+                          className={styles.viewBtn}
+                          onClick={() => {
+                            setViewRecord(row);
+                            setViewModal(true);
+                          }}
+                        >
+                          View
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -293,7 +302,8 @@ const fetchPerformance = async () => {
       {filteredData.length > 0 && (
         <div className={styles.tableFooter}>
           <p className={styles.showing}>
-            Showing {termStartIndex} – {termEndIndex} of {filteredData.length} students
+            Showing {termStartIndex} – {termEndIndex} of {filteredData.length}{" "}
+            students
           </p>
 
           <div className={styles.paginationWrap}>
@@ -305,7 +315,6 @@ const fetchPerformance = async () => {
           </div>
         </div>
       )}
-
 
       {viewModal && viewRecord && (
         <div className={styles.modalOverlay}>
@@ -352,13 +361,17 @@ const fetchPerformance = async () => {
                     viewRecord.subjects.map((s, i) => {
                       const outOf = s.totalMarks ?? 100;
                       const percentage =
-                        s.mark === "AA" ? "AA" : ((Number(s.mark) / outOf) * 100).toFixed(1);
+                        s.mark === "AA"
+                          ? "AA"
+                          : ((Number(s.mark) / outOf) * 100).toFixed(1);
                       return (
                         <tr key={i}>
                           <td>{s.subjectName}</td>
                           <td>{s.mark}</td>
                           <td>{outOf}</td>
-                          <td>{percentage === "AA" ? "AA" : `${percentage}%`}</td>
+                          <td>
+                            {percentage === "AA" ? "AA" : `${percentage}%`}
+                          </td>
                         </tr>
                       );
                     })
@@ -377,9 +390,11 @@ const fetchPerformance = async () => {
             </div>
 
             <div className={styles.modalFooter}>
-              <strong>Total Marks:</strong>{" "}
-              {viewRecord.total}/
-              {(viewRecord.subjects || []).reduce((sum, s) => sum + (s.totalMarks ?? 100), 0)}
+              <strong>Total Marks:</strong> {viewRecord.total}/
+              {(viewRecord.subjects || []).reduce(
+                (sum, s) => sum + (s.totalMarks ?? 100),
+                0,
+              )}
               &nbsp; | &nbsp;
               <strong>Percentage:</strong> {viewRecord.percentage}
             </div>

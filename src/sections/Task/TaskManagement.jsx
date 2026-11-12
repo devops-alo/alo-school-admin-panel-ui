@@ -10,9 +10,11 @@ import dayjs from "dayjs";
 import { FiChevronDown } from "react-icons/fi";
 import { LuUsers, LuFileText } from "react-icons/lu";
 import { IoCheckmarkCircle } from "react-icons/io5";
+import { hasActionAccess } from "../utils/permissions";
 
 const TaskManagement = () => {
   const navigate = useNavigate();
+  const canView = hasActionAccess("/tasks", "view");
   const [batches, setBatches] = useState([]);
   const [courseOptions, setCourseOptions] = useState([]);
 
@@ -24,7 +26,7 @@ const TaskManagement = () => {
   const [submittedMap, setSubmittedMap] = useState(new Map());
   const [loading, setLoading] = useState(true);
   const [batchesLoading, setBatchesLoading] = useState(true);
-
+  
   // ---- batches (batch-first filter, defaults to the primary batch) ----
   useEffect(() => {
     fetchBatches();
@@ -159,13 +161,17 @@ const TaskManagement = () => {
       <div className={styles.pageHeader}>
         <div>
           <h2 className={styles.heading}>Task Management</h2>
-          <p className={styles.subheading}>Who submitted their daily task, by course.</p>
+          <p className={styles.subheading}>
+            Who submitted their daily task, by course.
+          </p>
         </div>
 
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           <DatePicker
             value={date ? dayjs(date) : null}
-            onChange={(newValue) => setDate(newValue ? dayjs(newValue).format("YYYY-MM-DD") : "")}
+            onChange={(newValue) =>
+              setDate(newValue ? dayjs(newValue).format("YYYY-MM-DD") : "")
+            }
             format="DD MMM YYYY"
             slotProps={{
               textField: {
@@ -190,7 +196,10 @@ const TaskManagement = () => {
       <div className={styles.filterBar}>
         {renderSelect(
           batchId,
-          (value) => { setBatchId(value); setCourseId(""); },
+          (value) => {
+            setBatchId(value);
+            setCourseId("");
+          },
           "Select Batch",
           batches.map((b) => ({ value: b._id, label: b.batchName })),
           batchesLoading,
@@ -199,7 +208,10 @@ const TaskManagement = () => {
           courseId,
           setCourseId,
           "All Courses",
-          courseOptions.map((c) => ({ value: c.courseId, label: c.courseName })),
+          courseOptions.map((c) => ({
+            value: c.courseId,
+            label: c.courseName,
+          })),
           !batchId,
         )}
       </div>
@@ -256,7 +268,9 @@ const TaskManagement = () => {
             <span className={styles.emptyIcon}>
               <LuFileText />
             </span>
-            <p className={styles.emptyTitle}>No students found for this batch</p>
+            <p className={styles.emptyTitle}>
+              No students found for this batch
+            </p>
           </div>
         </div>
       ) : (
@@ -270,7 +284,7 @@ const TaskManagement = () => {
                   <th>Total Tasks Added</th>
                   <th>Submitted</th>
                   <th>Not Submitted</th>
-                  <th>Action</th>
+                  {canView && <th>Action</th>}
                 </tr>
               </thead>
 
@@ -284,18 +298,27 @@ const TaskManagement = () => {
                     <td>{course.tasksAdded}</td>
 
                     <td>
-                      <span className={styles.attPresent}>{course.submitted}</span>
+                      <span className={styles.attPresent}>
+                        {course.submitted}
+                      </span>
                     </td>
 
                     <td>
-                      <span className={styles.attAbsent}>{course.notSubmitted}</span>
+                      <span className={styles.attAbsent}>
+                        {course.notSubmitted}
+                      </span>
                     </td>
 
-                    <td>
-                      <button className={styles.viewBtn} onClick={() => viewCourseDetail(course.courseId)}>
-                        View
-                      </button>
-                    </td>
+                    {canView && (
+                      <td>
+                        <button
+                          className={styles.viewBtn}
+                          onClick={() => viewCourseDetail(course.courseId)}
+                        >
+                          View
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

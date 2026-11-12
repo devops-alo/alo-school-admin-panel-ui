@@ -3,6 +3,7 @@ import { Modal } from "antd";
 import styles from "./AddCourse.module.css";
 import { editCouse } from "../../api/Serviceapi";
 import { toast } from "react-toastify";
+import { hasActionAccess } from "../utils/permissions";
 
 const EditCourseModal = ({ visible, onCancel, onUpdate, formData,id }) => {
   const [courseName, setcoursename] = useState("");
@@ -18,26 +19,32 @@ const EditCourseModal = ({ visible, onCancel, onUpdate, formData,id }) => {
   const [adfeeerror, setadfeeerror] = useState("");
   const [sem1feeerror, setsem1feeerror] = useState("");
   const [sem2feeerror, setsem2feeerror] = useState("");
+  const canEdit = hasActionAccess("/course", "edit");
 
   const [loading, setLoading] = useState(false);
   
-  useEffect(() => {
-    console.log(formData[0])
-   if (formData && formData.length > 0) {
-     const course = formData[0];
-     setcoursename(course.courseName || "");
-     setduration(course.duration || "");
-     setsemester(course.noOfSem || "");
-     setadfee(course.admissionFee || "");
-     setsem1fee(course.firstsemFee || "");
-     setsem2fee(course.secondSemFee || "");
+ useEffect(() => {
+   if (!visible || !formData || formData.length === 0) {
+     return;
    }
-  }, [formData, visible]);
+
+   const course = formData[0];
+
+   setcoursename(course.courseName || "");
+   setduration(String(course.duration ?? ""));
+   setsemester(String(course.noOfSem ?? ""));
+   setadfee(String(course.admissionFee ?? ""));
+   setsem1fee(String(course.firstsemFee ?? ""));
+   setsem2fee(String(course.secondSemFee ?? ""));
+ }, [formData, visible]);
 
 
   async function handleCreate(e) {
     console.log('clicked')
     e.preventDefault();
+    if (!canEdit || loading) {
+      return;
+    }
     let hasError = false;
 
     // Course Name
@@ -186,9 +193,16 @@ const EditCourseModal = ({ visible, onCancel, onUpdate, formData,id }) => {
           >
             Cancel
           </button>
-          <button type="submit" form="edit-course-form" className={styles.submitBtn} disabled={loading}>
-            {loading ? "Updating..." : "Update"}
-          </button>
+          {canEdit && (
+            <button
+              type="submit"
+              form="edit-course-form"
+              className={styles.submitBtn}
+              disabled={loading}
+            >
+              {loading ? "Updating..." : "Update"}
+            </button>
+          )}
         </div>
       }
       centered
@@ -209,6 +223,7 @@ const EditCourseModal = ({ visible, onCancel, onUpdate, formData,id }) => {
                   placeholder="Enter Course Name"
                   value={courseName}
                   onChange={(e) => setcoursename(e.target.value)}
+                  disabled={!canEdit || loading}
                 />
                 <div className={styles.errorDiv}>
                   <p>{coursenameerror}</p>
@@ -221,6 +236,7 @@ const EditCourseModal = ({ visible, onCancel, onUpdate, formData,id }) => {
                   placeholder="Enter Duration"
                   value={duration}
                   onChange={(e) => setduration(e.target.value)}
+                  disabled={!canEdit || loading}
                 />
                 <div className={styles.errorDiv}>
                   <p>{durationerror}</p>
@@ -233,14 +249,13 @@ const EditCourseModal = ({ visible, onCancel, onUpdate, formData,id }) => {
                   placeholder="Enter no of Semester"
                   value={noOfSem}
                   onChange={(e) => setsemester(e.target.value)}
+                  disabled={!canEdit || loading}
                 />
                 <div className={styles.errorDiv}>
                   <p>{semestererror}</p>
                 </div>
               </div>
             </div>
-
-            
 
             <div className={styles.rowTwoGrid}>
               <div className={styles.formGroup}>
@@ -252,6 +267,7 @@ const EditCourseModal = ({ visible, onCancel, onUpdate, formData,id }) => {
                   placeholder="Enter Admission Fees"
                   value={admissionFee}
                   onChange={(e) => setadfee(e.target.value)}
+                  disabled={!canEdit || loading}
                 />
                 <div className={styles.errorDiv}>
                   <p>{adfeeerror}</p>
@@ -266,6 +282,7 @@ const EditCourseModal = ({ visible, onCancel, onUpdate, formData,id }) => {
                   placeholder="Enter Semester 1 Fees"
                   value={firstsemFee}
                   onChange={(e) => setsem1fee(e.target.value)}
+                  disabled={!canEdit || loading}
                 />
                 <div className={styles.errorDiv}>
                   <p>{sem1feeerror}</p>
@@ -280,6 +297,7 @@ const EditCourseModal = ({ visible, onCancel, onUpdate, formData,id }) => {
                   placeholder="Enter Semester 2 Fees"
                   value={secondSemFee}
                   onChange={(e) => setsem2fee(e.target.value)}
+                  disabled={!canEdit || loading}
                 />
                 <div className={styles.errorDiv}>
                   <p>{sem2feeerror}</p>

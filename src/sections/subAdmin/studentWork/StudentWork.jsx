@@ -8,14 +8,21 @@ import { getStudentWork, deleteStudentWork } from "../../../api/Serviceapi";
 import Skeleton from "@mui/material/Skeleton";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, CircularProgress } from "@mui/material";
 import { toast } from "react-toastify";
-
+import { hasActionAccess } from "../../utils/permissions";
 const StudentWork = () => {
   const [data, setData] = useState([]);
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
   const [editData, setEditData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const STUDENT_WORK_ROUTE = "/studentwork";
 
+
+  const canAdd = hasActionAccess(STUDENT_WORK_ROUTE, "add");
+  const canEdit = hasActionAccess(STUDENT_WORK_ROUTE, "edit");
+  const canDelete = hasActionAccess(STUDENT_WORK_ROUTE, "delete");
+
+  const canShowActions = canEdit || canDelete;
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -119,14 +126,18 @@ const StudentWork = () => {
             )}
 
             <div className={styles.addRow}>
-              <button className={styles.addBtn} onClick={handleOpenAdd}>
-                + Add Work
-              </button>
+              {canAdd && (
+                <button className={styles.addBtn} onClick={handleOpenAdd}>
+                  + Add Work
+                </button>
+              )}
             </div>
 
             <div className={styles.tableWrapper}>
               {loading ? (
-                <Box sx={{ display: "flex", justifyContent: "center", padding: 4 }}>
+                <Box
+                  sx={{ display: "flex", justifyContent: "center", padding: 4 }}
+                >
                   <CircularProgress />
                 </Box>
               ) : (
@@ -138,23 +149,29 @@ const StudentWork = () => {
                       <th>Position</th>
                       <th>Thumbnail</th>
                       <th>Behance URL</th>
-                      <th>Action</th>
+                      {canShowActions && <th>Action</th>}
                     </tr>
                   </thead>
                   <tbody>
                     {selectedData.length === 0 ? (
                       <tr>
-                         <td colSpan="6">
-                          <div style={{ textAlign: "center", padding: "40px 0", opacity: 0.8 }}>
-                           <img
-  src="https://cdn-icons-png.flaticon.com/512/4076/4076549.png"
-  alt="empty"
-  width={120}
-  style={{
-    display: "block",
-    margin: "0 auto 10px auto",
-  }}
-/>
+                        <td colSpan={canShowActions ? 6 : 5}>
+                          <div
+                            style={{
+                              textAlign: "center",
+                              padding: "40px 0",
+                              opacity: 0.8,
+                            }}
+                          >
+                            <img
+                              src="https://cdn-icons-png.flaticon.com/512/4076/4076549.png"
+                              alt="empty"
+                              width={120}
+                              style={{
+                                display: "block",
+                                margin: "0 auto 10px auto",
+                              }}
+                            />
                             <p>No Work Added Yet</p>
                             {/* <small>Add your first event to get started</small> */}
                           </div>
@@ -164,22 +181,60 @@ const StudentWork = () => {
                       selectedData.map((item) => (
                         <tr key={item.id}>
                           <td>
-                            <img src={item.profile} className={styles.avatar} alt="" />
+                            <img
+                              src={item.profile}
+                              className={styles.avatar}
+                              alt=""
+                            />
                           </td>
                           <td>{item.name}</td>
                           <td>{item.position}</td>
                           <td>
-                            <img src={item.thumbnail} className={styles.thumbnail} alt="" />
+                            <img
+                              src={item.thumbnail}
+                              className={styles.thumbnail}
+                              alt=""
+                            />
                           </td>
                           <td>
-                            <a href={item.behance} target="_blank" rel="noreferrer" style={{ padding: "4px 12px", background: "#e8eefc", color: "#2563eb", borderRadius: 999, fontWeight: 600, fontSize: 12.5, textDecoration: "none", display: "inline-block" }}>
+                            <a
+                              href={item.behance}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                padding: "4px 12px",
+                                background: "#e8eefc",
+                                color: "#2563eb",
+                                borderRadius: 999,
+                                fontWeight: 600,
+                                fontSize: 12.5,
+                                textDecoration: "none",
+                                display: "inline-block",
+                              }}
+                            >
                               Tap to View
                             </a>
                           </td>
-                          <td className={styles.actions}>
-                            <FiEdit className={styles.icon} onClick={() => handleOpenEdit(item)} title="Edit" />
-                            <FiTrash2 className={styles.icon} onClick={() => openDeleteConfirm(item.id)} title="Delete" style={{ color: "#dc2626" }} />
-                          </td>
+                          {canShowActions && (
+                            <td className={styles.actions}>
+                              {canEdit && (
+                                <FiEdit
+                                  className={styles.icon}
+                                  onClick={() => handleOpenEdit(item)}
+                                  title="Edit"
+                                />
+                              )}
+
+                              {canDelete && (
+                                <FiTrash2
+                                  className={styles.icon}
+                                  onClick={() => openDeleteConfirm(item.id)}
+                                  title="Delete"
+                                  style={{ color: "#dc2626" }}
+                                />
+                              )}
+                            </td>
+                          )}
                         </tr>
                       ))
                     )}
@@ -190,9 +245,19 @@ const StudentWork = () => {
 
             {/* Pagination */}
             {data.length > rowsPerPage && (
-              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 15 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  marginTop: 15,
+                }}
+              >
                 <Stack>
-                  <Pagination count={Math.ceil(data.length / rowsPerPage)} page={page} onChange={(e, v) => setPage(v)} />
+                  <Pagination
+                    count={Math.ceil(data.length / rowsPerPage)}
+                    page={page}
+                    onChange={(e, v) => setPage(v)}
+                  />
                 </Stack>
               </div>
             )}
@@ -201,15 +266,30 @@ const StudentWork = () => {
       </div>
 
       {/* Add / Edit Modal */}
-      <AddWorkModel open={open} handleClose={handleClose} refreshWork={fetchWork} editData={editData} setOverlayLoading={setOverlayLoading} />
+      <AddWorkModel
+        open={open}
+        handleClose={handleClose}
+        refreshWork={fetchWork}
+        editData={editData}
+        setOverlayLoading={setOverlayLoading}
+      />
 
       {/* Delete Confirmation */}
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
         <DialogTitle>Delete Student Work</DialogTitle>
-        <DialogContent>Are you sure you want to delete this work?</DialogContent>
+        <DialogContent>
+          Are you sure you want to delete this work?
+        </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDelete(false)} disabled={deleteLoading}>Cancel</Button>
-          <Button variant="contained" color="error" onClick={handleDelete} disabled={deleteLoading}>
+          <Button onClick={() => setOpenDelete(false)} disabled={deleteLoading}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDelete}
+            disabled={deleteLoading}
+          >
             {deleteLoading ? "Deleting..." : "Delete"}
           </Button>
         </DialogActions>

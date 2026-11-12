@@ -40,50 +40,101 @@ const Login = ({ setLoginUser }) => {
     return newErrors;
   }
 
-  const handleClick = async (e) => {
-    e.preventDefault();
+  
+const handleClick = async (e) => {
+  e.preventDefault();
 
-    if (Object.keys(validateForm()).length > 0) return;
+  if (Object.keys(validateForm()).length > 0) return;
 
-    setLoading(true);
-    try {
-      const res = await LoginUser(email, password);
-      const userData = res?.data?.data?.data;
-      const token = res?.data?.data?.token;
+  setLoading(true);
 
-      if (!userData || !token) throw new Error("Invalid login response");
+  try {
+    const res = await LoginUser(email, password);
 
-      // Save user data in localStorage and sessionStorage
-      localStorage.setItem("authToken", token);
-      localStorage.setItem("userId", userData.userId);
-      localStorage.setItem("username", userData.name);
-      localStorage.setItem("userRole", userData.role);
+    const responseData = res?.data?.data;
+    const userData = responseData?.data;
+    const token = responseData?.token;
 
-      sessionStorage.setItem("authToken", token);
-      sessionStorage.setItem("userId", userData.userId);
-      sessionStorage.setItem("username", userData.name);
-      sessionStorage.setItem("userRole", userData.role);
+    if (!userData || !token) {
+      throw new Error("Invalid login response");
+    }
 
-      setLoginUser(true);
+    const role = userData.role?.toLowerCase();
+    const permissions = Array.isArray(userData.permissions)
+      ? userData.permissions
+      : [];
 
-      // Navigate based on role
-      if (userData.role === "admin") {
+    if (role !== "admin" && role !== "sub-admin" && role !== "super-admin") {
+      toast.error("Unauthorized role!");
+      return;
+    }
+
+    // Save login details
+    sessionStorage.setItem("authToken", token);
+    sessionStorage.setItem("userId", userData.userId);
+    sessionStorage.setItem("username", userData.name);
+    sessionStorage.setItem("userRole", role);
+    sessionStorage.setItem("permissions", JSON.stringify(permissions));
+
+    // Keep localStorage compatible with existing app code
+    localStorage.setItem("authToken", token);
+    localStorage.setItem("userId", userData.userId);
+    localStorage.setItem("username", userData.name);
+    localStorage.setItem("userRole", role);
+    localStorage.setItem("permissions", JSON.stringify(permissions));
+
+    setLoginUser(true);
+
+    // Super Admin: access all routes
+    if (role === "super-admin") {
+      toast.success("Logged in as Super Admin!");
+      navigate("/dashboard", { replace: true });
+      return;
+    }
+
+    // Admin: access only assigned routes
+    if (role === "admin") {
+      const dashboardAssigned = permissions.some(
+        (permission) =>
+          permission.route?.replace(/\/+$/, "").toLowerCase() === "/dashboard",
+      );
+
+      if (dashboardAssigned) {
         toast.success("Logged in as Admin!");
-        navigate("/dashboard");
-      } else if (userData.role === "sub-admin") {
-        toast.success("Logged in as Sub Admin!");
-        navigate("/alumniimages");
+       navigate("/dashboard", { replace: true });
       } else {
-        toast.error("Unauthorized role!");
+        const firstAllowedRoute = permissions.find(
+          (permission) => permission.route,
+        )?.route;
+
+        navigate(firstAllowedRoute || "/unauthorized", {
+          replace: true,
+        });
       }
 
-    } catch (err) {
-      console.error("Login failed:", err);
-      toast.error(err?.response?.data?.message || err.message || "Login failed!");
-    } finally {
-      setLoading(false);
+      return;
     }
-  };
+
+    // Sub-admin: open the first route with view permission
+    const firstAllowedRoute = permissions.find(
+      (permission) => permission.route && permission.actions?.includes("view"),
+    )?.route;
+
+    if (firstAllowedRoute) {
+      toast.success("Logged in as Sub Admin!");
+      navigate(firstAllowedRoute, { replace: true });
+    } else {
+      navigate("/unauthorized", { replace: true });
+    }
+  } catch (err) {
+    console.error("Login failed:", err);
+
+    toast.error(err?.response?.data?.message || err.message || "Login failed!");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <>

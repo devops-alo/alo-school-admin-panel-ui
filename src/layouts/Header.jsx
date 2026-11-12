@@ -9,6 +9,7 @@ import { RiFileList2Line } from "react-icons/ri";
 import { PiFlagPennantLight } from "react-icons/pi";
 import { RiSettings5Line } from "react-icons/ri";
 import { RiLogoutCircleLine } from "react-icons/ri";
+import { FaGraduationCap, FaImages } from "react-icons/fa";
 import { FaBullseye } from "react-icons/fa6";
 import { IoMenu } from "react-icons/io5";
 import { IoMdClose } from "react-icons/io";
@@ -23,6 +24,7 @@ import user_image from '../assets/user.png'
 import { IoMdPerson } from "react-icons/io";
 import { RiFileList2Fill } from "react-icons/ri";
 import { RiStackLine, RiStackFill } from "react-icons/ri";
+import { RiChatQuoteLine, RiChatQuoteFill } from "react-icons/ri";
 import { PiFlagPennantFill } from "react-icons/pi";
 import { RiSettings5Fill } from "react-icons/ri";
 import { FaIdBadge } from "react-icons/fa";
@@ -33,14 +35,263 @@ import { getNotification, updateNotification, markAllNotificationsRead, getNotif
 import { IoMdCloseCircle } from "react-icons/io";
 import { format } from "date-fns";
 import { FaRegIdBadge } from "react-icons/fa";
-import { FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import { FaChevronDown, FaChevronUp,FaUserShield  } from 'react-icons/fa';
+import { getUserRole, getUserPermissions } from "../sections/utils/permissions";
 
+const SIDEBAR_ORDER = [
+  "/dashboard",
+  "/course",
+  "/batch",
+  "/tasks",
+  "/tasks/settings",
+  "/students",
+  "/attendence",
+  "/attendence/leaverequest",
+  "/academic",
+  "/daily-quotes",
+  "/fees",
+  "/complaint",
+  "/harassment",
+  "/enquiry/aloschool",
+  "/enquiry/littlesteps",
+  "/events",
+  "/addevent",
+  "/application",
+  "/placement",
+  "/workshop",
+  "/studentwork",
+  "/alumniimages",
+  "/subadmin-management",
+  "/settings",
+];
 
+const SIDEBAR_GROUPS = [
+  {
+    label: "Task Management",
+    parentRoutes: ["/task", "/tasks"],
+    children: [
+      { label: "Task List", route: "/tasks" },
+      { label: "Task Settings", route: "/tasks/settings" },
+    ],
+  },
+  {
+    label: "Student Management",
+    parentRoutes: [
+      "/students",
+      "/student",
+      "/attendence",
+      "/attendance",
+      "/academic",
+    ],
+    children: [
+      { label: "Students", route: "/students" },
+      { label: "Attendance", route: "/attendence" },
+      { label: "Leave Management", route: "/attendence/leaverequest" },
+      { label: "Academic", route: "/academic" },
+    ],
+  },
+  {
+    label: "Enquiry & Complaints",
+    parentRoutes: ["/enquiry", "/complaint", "/harassment"],
+    children: [
+      { label: "Complaint", route: "/complaint" },
+      { label: "Harassment", route: "/harassment" },
+      { label: "ALO School Enquiry", route: "/enquiry/aloschool" },
+      { label: "ALO LittleSteps Enquiry", route: "/enquiry/littlesteps" },
+    ],
+  },
+  {
+    label: "Events",
+    parentRoutes: ["/events", "/addevent"],
+    children: [
+      { label: "Student Panel Events", route: "/events" },
+      { label: "Website Event Images", route: "/addevent" },
+    ],
+  },
+];
 
 const Header = ({ setLoginUser }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const userRole = localStorage.getItem("userRole");
+ 
+const userRole = getUserRole();
+const permissions = getUserPermissions();
+const getSidebarIcon = (route, isActive) => {
+  const normalizedRoute = route.replace(/\/+$/, "").toLowerCase();
+
+  switch (normalizedRoute) {
+    case "/dashboard":
+      return isActive ? <IoPieChart /> : <IoPieChartOutline />;
+
+    case "/course":
+      return isActive ? <RiFileList2Fill /> : <RiFileList2Line />;
+
+    case "/batch":
+      return isActive ? <RiStackFill /> : <RiStackLine />;
+
+    case "/tasks":
+    case "/task":
+      return isActive ? <MdTaskAlt /> : <MdOutlineTaskAlt />;
+
+    case "/tasks/settings":
+      return isActive ? <RiSettings5Fill /> : <RiSettings5Line />;
+
+    case "/students":
+    case "/student":
+      return isActive ? <IoMdPerson /> : <BsPerson />;
+
+    case "/attendence":
+    case "/attendance":
+      return isActive ? <IoMdPerson /> : <BsPerson />;
+
+    case "/attendence/leaverequest":
+      return isActive ? <FaExclamationCircle /> : <FaRegCommentDots />;
+
+    case "/academic":
+      return isActive ? <RiFileList2Fill /> : <RiFileList2Line />;
+
+    case "/daily-quotes":
+      return isActive ? <RiChatQuoteFill /> : <RiChatQuoteLine />;
+
+    case "/fees":
+      return isActive ? <FaMoneyBill /> : <LiaMoneyBillSolid />;
+
+    case "/complaint":
+    case "/harassment":
+    case "/enquiry":
+    case "/enquiry/aloschool":
+    case "/enquiry/littlesteps":
+      return isActive ? <FaExclamationCircle /> : <FaRegCommentDots />;
+
+    case "/events":
+case "/addevent":
+      return isActive ? <PiFlagPennantFill /> : <PiFlagPennantLight />;
+
+    case "/application":
+      return isActive ? <FaIdBadge /> : <FaRegIdBadge />;
+
+    case "/placement":
+      return isActive ? <MdWork /> : <MdOutlineWork />;
+
+    case "/workshop":
+      return isActive ? <RiPresentationFill /> : <RiPresentationLine />;
+
+    case "/subadmin-management":
+      return <FaUserShield />;
+
+    case "/settings":
+      return isActive ? <RiSettings5Fill /> : <RiSettings5Line />;
+
+    case "/studentwork":
+      return isActive ? <FaGraduationCap /> : <FaGraduationCap />;
+
+    case "/alumniimages":
+      return isActive ? <FaImages /> : <FaImages />;
+
+    default:
+      return null;
+  }
+};
+const hasParentPermission = (parentRoutes) => {
+  // Super Admin can see all sidebar groups
+  if (userRole === "super-admin") {
+    return true;
+  }
+
+  return permissions.some((permission) => {
+    const route = permission.route?.replace(/\/+$/, "").toLowerCase();
+
+    return (
+      parentRoutes.some(
+        (parentRoute) =>
+          parentRoute.replace(/\/+$/, "").toLowerCase() === route,
+      ) &&
+      (userRole === "admin" || permission.actions?.includes("view"))
+    );
+  });
+};
+  const hasAttendancePermission = () =>
+    permissions.some((permission) => {
+      const route = permission.route?.replace(/\/+$/, "").toLowerCase();
+
+      return (
+        ["/attendance", "/attendence"].includes(route) &&
+        (userRole === "admin" || permission.actions?.includes("view"))
+      );
+    });
+const getValidUserId = () => {
+  const userId =
+    sessionStorage.getItem("userId") || localStorage.getItem("userId");
+
+  if (!userId || userId === "undefined" || userId === "null") {
+    return null;
+  }
+
+  return userId.trim() || null;
+};
+
+
+const normalizeRoute = (route = "") => route.replace(/\/+$/, "").toLowerCase();
+const getPermissionOrder = (route) => {
+  const normalizedRoute = normalizeRoute(route);
+
+  const permission = permissions.find(
+    (item) => normalizeRoute(item.route) === normalizedRoute,
+  );
+
+  const order = Number(permission?.order);
+
+  return permission?.order !== undefined &&
+    permission?.order !== null &&
+    permission?.order !== "" &&
+    Number.isFinite(order)
+    ? order
+    : Infinity;
+};
+
+const assignedRoutes =
+  userRole === "super-admin"
+    ? []
+    : permissions
+        .filter(
+          (permission) =>
+            permission.route &&
+            (userRole === "admin" ||
+              (userRole === "sub-admin" &&
+                Array.isArray(permission.actions) &&
+                permission.actions.includes("view"))),
+        )
+        .sort((a, b) => {
+          const orderA = Number(a.order);
+          const orderB = Number(b.order);
+
+          const validOrderA =
+            a.order !== undefined &&
+            a.order !== null &&
+            a.order !== "" &&
+            Number.isFinite(orderA);
+
+          const validOrderB =
+            b.order !== undefined &&
+            b.order !== null &&
+            b.order !== "" &&
+            Number.isFinite(orderB);
+
+          if (validOrderA && validOrderB) {
+            return orderA - orderB;
+          }
+
+          if (validOrderA) return -1;
+          if (validOrderB) return 1;
+
+          return 0;
+        });
+
+const firstAllowedRoute = assignedRoutes[0]?.route || "/login";
+
+
+
+//  const firstAllowedRoute = subAdminRoutes[0]?.route || "/login";
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [isNavbarOpen, setIsNavbarOpen] = useState(false);
   const [notification, setNotification] = useState(false)
@@ -62,9 +313,23 @@ const Header = ({ setLoginUser }) => {
     location.pathname.startsWith("/enquiry");
 
   const [isEnquiryOpen, setIsEnquiryOpen] = useState(isGrievanceRoute);
+
   const [isTaskOpen, setIsTaskOpen] = useState(() =>
     location.pathname.startsWith("/tasks"),
   );
+
+  // Events and Add Event dropdown
+  const isEventsRoute =
+    location.pathname.startsWith("/events") ||
+    location.pathname.startsWith("/addevent");
+
+  const [isEventsOpen, setIsEventsOpen] = useState(isEventsRoute);
+
+  useEffect(() => {
+    if (isEventsRoute) {
+      setIsEventsOpen(true);
+    }
+  }, [location.pathname]);
 
   const notificationRef = useRef(null);
 
@@ -98,32 +363,61 @@ const Header = ({ setLoginUser }) => {
   const [isLogoutOpen, setIsLogutOpen] = useState(false);
 
 
-  const handleLogout = () => {
-    console.log("Logout clicked");
-    localStorage.removeItem('authToken');
-    sessionStorage.removeItem('authToken');
-    localStorage.removeItem('userId');
-    sessionStorage.removeItem('userId');
-    localStorage.removeItem('username');
-    localStorage.removeItem('att_courseId');
-    localStorage.removeItem('att_batchId');
-    localStorage.removeItem('att_status');
-    localStorage.removeItem('att_date');
-    localStorage.removeItem('att_searchText');
-    localStorage.removeItem('activestatus');
-    localStorage.removeItem('status');
-    localStorage.removeItem('courseId');
-    localStorage.removeItem('batchId');
-    localStorage.removeItem('searchText');
-    sessionStorage.removeItem('studentActiveStatus');
-    sessionStorage.removeItem('studentStatus');
-    sessionStorage.removeItem('studentCourseId');
-    sessionStorage.removeItem('studentBatchId');
-    sessionStorage.removeItem('studentSearchText');
-    sessionStorage.removeItem('studentPage');
-    navigate('/login');
-    setLoginUser(false);
-  };
+ 
+
+
+const handleLogout = () => {
+  // Close the modal immediately
+  setIsLogutOpen(false);
+
+  // Clear authentication data
+  const authKeys = [
+    "authToken",
+    "userId",
+    "username",
+    "userRole",
+    "permissions",
+  ];
+
+  authKeys.forEach((key) => {
+    sessionStorage.removeItem(key);
+    localStorage.removeItem(key);
+  });
+
+  // Clear saved filters
+  const filterKeys = [
+    "att_courseId",
+    "att_batchId",
+    "att_status",
+    "att_date",
+    "att_searchText",
+    "activestatus",
+    "status",
+    "courseId",
+    "batchId",
+    "searchText",
+    "studentActiveStatus",
+    "studentStatus",
+    "studentCourseId",
+    "studentBatchId",
+    "studentSearchText",
+    "studentPage",
+  ];
+
+  filterKeys.forEach((key) => {
+    sessionStorage.removeItem(key);
+    localStorage.removeItem(key);
+  });
+
+  // Update authentication state
+  setLoginUser(false);
+
+  // Replace the current URL with login
+  navigate("/login", { replace: true });
+};
+
+
+
 
   let userName = localStorage.getItem('username');
 
@@ -162,6 +456,7 @@ const Header = ({ setLoginUser }) => {
 
   let notificationget = async () => {
     try {
+      
       const res = await getNotification();
       setNotificationlist(res?.data?.data?.data);
       // console.log(res?.data?.data?.fetchCount, 'ddd')
@@ -280,7 +575,11 @@ const Header = ({ setLoginUser }) => {
             <div>
               <div className={styles.logo}>
                 <Link
-                  to={userRole === "admin" ? "/dashboard" : "/alumniimages"}
+                  to={
+                    userRole === "super-admin"
+                      ? "/dashboard"
+                      : firstAllowedRoute
+                  }
                 >
                   <img
                     src={logo}
@@ -296,7 +595,7 @@ const Header = ({ setLoginUser }) => {
             </div>
             <div className={styles.main_navigation}>
               <div className={styles.navigation}>
-                {userRole === "admin" && (
+                {userRole === "super-admin" && (
                   <>
                     {/* Admin Navigation */}
                     <div className={styles.dashboard}>
@@ -347,70 +646,74 @@ const Header = ({ setLoginUser }) => {
                         Batch
                       </button>
                     </div>
-                    <div className={styles.settings}>
-                      <button
-                        className={`${styles.settings_button} ${
-                          location.pathname.startsWith("/tasks")
-                            ? styles.navactive
-                            : ""
-                        }`}
-                        onClick={() => setIsTaskOpen(!isTaskOpen)}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                        }}
-                      >
-                        <div
+                    {hasParentPermission(["/task", "/tasks"]) && (
+                      <div className={styles.settings}>
+                        <button
+                          className={`${styles.settings_button} ${
+                            location.pathname.startsWith("/tasks")
+                              ? styles.navactive
+                              : ""
+                          }`}
+                          onClick={() => setIsTaskOpen(!isTaskOpen)}
                           style={{
                             display: "flex",
                             alignItems: "center",
-                            gap: "8px",
+                            justifyContent: "space-between",
                           }}
                         >
-                          {location.pathname.startsWith("/tasks") ? (
-                            <MdTaskAlt className={styles.filled_settings_icon} />
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                            }}
+                          >
+                            {location.pathname.startsWith("/tasks") ? (
+                              <MdTaskAlt
+                                className={styles.filled_settings_icon}
+                              />
+                            ) : (
+                              <MdOutlineTaskAlt
+                                className={styles.outline_settings_icon}
+                              />
+                            )}
+                            Task Management
+                          </div>
+
+                          {isTaskOpen ? (
+                            <FaChevronUp size={12} />
                           ) : (
-                            <MdOutlineTaskAlt
-                              className={styles.outline_settings_icon}
-                            />
+                            <FaChevronDown size={12} />
                           )}
-                          Task Management
-                        </div>
+                        </button>
 
-                        {isTaskOpen ? (
-                          <FaChevronUp size={12} />
-                        ) : (
-                          <FaChevronDown size={12} />
+                        {isTaskOpen && (
+                          <div className={styles.submenu}>
+                            <button
+                              className={`${styles.settings_button} text-sm ${
+                                location.pathname === "/tasks"
+                                  ? styles.navactive
+                                  : ""
+                              }`}
+                              onClick={() => navigate("/tasks")}
+                            >
+                              Task List
+                            </button>
+
+                            <button
+                              className={`${styles.settings_button} text-sm ${
+                                location.pathname === "/tasks/settings"
+                                  ? styles.navactive
+                                  : ""
+                              }`}
+                              onClick={() => navigate("/tasks/settings")}
+                            >
+                              Task Settings
+                            </button>
+                          </div>
                         )}
-                      </button>
-
-                      {isTaskOpen && (
-                        <div className={styles.submenu}>
-                          <button
-                            className={`${styles.settings_button} text-sm ${
-                              location.pathname === "/tasks"
-                                ? styles.navactive
-                                : ""
-                            }`}
-                            onClick={() => navigate("/tasks")}
-                          >
-                            Task List
-                          </button>
-
-                          <button
-                            className={`${styles.settings_button} text-sm ${
-                              location.pathname === "/tasks/settings"
-                                ? styles.navactive
-                                : ""
-                            }`}
-                            onClick={() => navigate("/tasks/settings")}
-                          >
-                            Task Settings
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                     <div className={styles.settings}>
                       <button
                         className={`${styles.settings_button} ${
@@ -437,7 +740,9 @@ const Header = ({ setLoginUser }) => {
                           )}
                           Student Management
                           {!isStudentOpen && categoryCounts.leave > 0 && (
-                            <span className={styles.countBadge}>{categoryCounts.leave}</span>
+                            <span className={styles.countBadge}>
+                              {categoryCounts.leave}
+                            </span>
                           )}
                         </div>
 
@@ -464,7 +769,9 @@ const Header = ({ setLoginUser }) => {
                           <button
                             className={`${styles.settings_button} text-sm ${
                               location.pathname.startsWith("/attendence") &&
-                              !location.pathname.startsWith("/attendence/leaverequest")
+                              !location.pathname.startsWith(
+                                "/attendence/leaverequest",
+                              )
                                 ? styles.navactive
                                 : ""
                             }`}
@@ -475,7 +782,9 @@ const Header = ({ setLoginUser }) => {
 
                           <button
                             className={`${styles.settings_button} text-sm ${
-                              location.pathname.startsWith("/attendence/leaverequest")
+                              location.pathname.startsWith(
+                                "/attendence/leaverequest",
+                              )
                                 ? styles.navactive
                                 : ""
                             }`}
@@ -483,7 +792,9 @@ const Header = ({ setLoginUser }) => {
                           >
                             Leave Management
                             {categoryCounts.leave > 0 && (
-                              <span className={`${styles.countBadge} ${styles.countBadgeRight}`}>
+                              <span
+                                className={`${styles.countBadge} ${styles.countBadgeRight}`}
+                              >
                                 {categoryCounts.leave}
                               </span>
                             )}
@@ -501,6 +812,23 @@ const Header = ({ setLoginUser }) => {
                           </button>
                         </div>
                       )}
+                    </div>
+                    <div className={styles.settings}>
+                      <button
+                        type="button"
+                        className={`${styles.settings_button} ${
+                          location.pathname.startsWith("/daily-quotes")
+                            ? styles.navactive
+                            : ""
+                        }`}
+                        onClick={() => navigate("/daily-quotes")}
+                      >
+                        {getSidebarIcon(
+                          "/daily-quotes",
+                          location.pathname.startsWith("/daily-quotes"),
+                        )}
+                        <span>Daily Quotes</span>
+                      </button>
                     </div>
                     <div className={styles.fees}>
                       <button
@@ -547,7 +875,9 @@ const Header = ({ setLoginUser }) => {
                           )}
                           Enquiry &amp; Complaints
                           {!isEnquiryOpen && enquiryTotalCount > 0 && (
-                            <span className={styles.countBadge}>{enquiryTotalCount}</span>
+                            <span className={styles.countBadge}>
+                              {enquiryTotalCount}
+                            </span>
                           )}
                         </div>
 
@@ -570,7 +900,9 @@ const Header = ({ setLoginUser }) => {
                           >
                             Complaint
                             {categoryCounts.complaint > 0 && (
-                              <span className={`${styles.countBadge} ${styles.countBadgeRight}`}>
+                              <span
+                                className={`${styles.countBadge} ${styles.countBadgeRight}`}
+                              >
                                 {categoryCounts.complaint}
                               </span>
                             )}
@@ -586,7 +918,9 @@ const Header = ({ setLoginUser }) => {
                           >
                             Harassment
                             {categoryCounts.harassment > 0 && (
-                              <span className={`${styles.countBadge} ${styles.countBadgeRight}`}>
+                              <span
+                                className={`${styles.countBadge} ${styles.countBadgeRight}`}
+                              >
                                 {categoryCounts.harassment}
                               </span>
                             )}
@@ -602,7 +936,9 @@ const Header = ({ setLoginUser }) => {
                           >
                             ALO School Enquiry
                             {categoryCounts["enquiry-aloschool"] > 0 && (
-                              <span className={`${styles.countBadge} ${styles.countBadgeRight}`}>
+                              <span
+                                className={`${styles.countBadge} ${styles.countBadgeRight}`}
+                              >
                                 {categoryCounts["enquiry-aloschool"]}
                               </span>
                             )}
@@ -618,7 +954,9 @@ const Header = ({ setLoginUser }) => {
                           >
                             ALO LittleSteps Enquiry
                             {categoryCounts["enquiry-littlesteps"] > 0 && (
-                              <span className={`${styles.countBadge} ${styles.countBadgeRight}`}>
+                              <span
+                                className={`${styles.countBadge} ${styles.countBadgeRight}`}
+                              >
                                 {categoryCounts["enquiry-littlesteps"]}
                               </span>
                             )}
@@ -626,22 +964,76 @@ const Header = ({ setLoginUser }) => {
                         </div>
                       )}
                     </div>
-                    <div className={styles.events}>
+                    <div className={styles.settings}>
                       <button
-                        className={`${styles.events_button} ${location.pathname == "/events" ? styles.navactive : ""}`}
-                        onClick={() => navigate("/events")}
+                        type="button"
+                        className={`${styles.settings_button} ${
+                          isEventsRoute ? styles.navactive : ""
+                        }`}
+                        onClick={() => setIsEventsOpen((prev) => !prev)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
                       >
-                        {location.pathname == "/events" ? (
-                          <PiFlagPennantFill
-                            className={styles.filled_flag_icon}
-                          />
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                          }}
+                        >
+                          {isEventsRoute ? (
+                            <PiFlagPennantFill />
+                          ) : (
+                            <PiFlagPennantLight />
+                          )}
+                          <span>Events</span>
+                        </div>
+
+                        {isEventsOpen ? (
+                          <FaChevronUp size={12} />
                         ) : (
-                          <PiFlagPennantLight
-                            className={styles.outline_flag_icon}
-                          />
+                          <FaChevronDown size={12} />
                         )}
-                        Events
                       </button>
+
+                      {isEventsOpen && (
+                        <div className={styles.submenu}>
+                          <button
+                            type="button"
+                            className={`${styles.settings_button} text-sm ${
+                              location.pathname === "/events"
+                                ? styles.navactive
+                                : ""
+                            }`}
+                            onClick={() => {
+                              navigate("/events");
+                              setIsNavbarOpen(false);
+                            }}
+                          >
+                            
+                            <span>Student Panel Events</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            className={`${styles.settings_button} text-sm ${
+                              location.pathname === "/addevent"
+                                ? styles.navactive
+                                : ""
+                            }`}
+                            onClick={() => {
+                              navigate("/addevent");
+                              setIsNavbarOpen(false);
+                            }}
+                          >
+                            {/* <PiFlagPennantLight /> */}
+                            <span>Website Event Images</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div className={styles.settings}>
                       <button
@@ -679,7 +1071,9 @@ const Header = ({ setLoginUser }) => {
                         onClick={() => navigate("/workshop")}
                       >
                         {location.pathname.startsWith("/workshop") ? (
-                          <RiPresentationFill className={styles.filled_settings_icon} />
+                          <RiPresentationFill
+                            className={styles.filled_settings_icon}
+                          />
                         ) : (
                           <RiPresentationLine
                             className={styles.outline_settings_icon}
@@ -689,59 +1083,397 @@ const Header = ({ setLoginUser }) => {
                       </button>
                     </div>
 
-                  </>
-                )}
-
-                {userRole === "sub-admin" && (
-                  <>
-                    {/* Alumni Images */}
-                    <div className={styles.settings}>
-                      <button
-                        className={`${styles.settings_button} ${
-                          location.pathname === "/alumniimages"
-                            ? styles.navactive
-                            : ""
-                        }`}
-                        onClick={() => navigate("/alumniimages")}
-                      >
-                        <FaIdBadge className={styles.outline_settings_icon} />
-                        Alumni Images
-                      </button>
-                    </div>
-
                     {/* Student Work */}
                     <div className={styles.settings}>
                       <button
+                        type="button"
                         className={`${styles.settings_button} ${
-                          location.pathname === "/studentwork"
+                          location.pathname.startsWith("/studentwork")
                             ? styles.navactive
                             : ""
                         }`}
                         onClick={() => navigate("/studentwork")}
                       >
-                        <RiFileList2Line
-                          className={styles.outline_settings_icon}
-                        />
-                        Student Work
+                        <FaGraduationCap size={17} />
+                        <span>Student Work</span>
                       </button>
                     </div>
 
-                    {/* Add Event */}
+                    {/* Alumni Images */}
                     <div className={styles.settings}>
                       <button
+                        type="button"
                         className={`${styles.settings_button} ${
-                          location.pathname === "/addevent"
+                          location.pathname.startsWith("/alumniimages")
                             ? styles.navactive
                             : ""
                         }`}
-                        onClick={() => navigate("/addevent")}
+                        onClick={() => navigate("/alumniimages")}
                       >
-                        <PiFlagPennantLight
-                          className={styles.outline_settings_icon}
-                        />
-                        Add Event
+                        <FaImages size={17} />
+                        <span>Alumni Images</span>
                       </button>
                     </div>
+
+                    <div className={styles.settings}>
+                      <button
+                        type="button"
+                        className={`${styles.settings_button} ${
+                          location.pathname.startsWith("/subadmin-management")
+                            ? styles.navactive
+                            : ""
+                        }`}
+                        onClick={() => navigate("/subadmin-management")}
+                      >
+                        <FaUserShield size={17} />
+                        <span>Subadmin Management</span>
+                      </button>
+                    </div>
+                    <div className={styles.settings}>
+                      <button
+                        type="button"
+                        className={`${styles.settings_button} ${
+                          location.pathname.startsWith("/settings")
+                            ? styles.navactive
+                            : ""
+                        }`}
+                        onClick={() => navigate("/settings")}
+                      >
+                        {getSidebarIcon(
+                          "/settings",
+                          location.pathname.startsWith("/settings"),
+                        )}
+                        <span>Settings</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {/* {userRole === "sub-admin" && (
+                  <>
+                    {subAdminRoutes.map((permission) => {
+                      const route = permission.route.replace(/\/+$/, "");
+                      const isActive =
+                        location.pathname.toLowerCase() ===
+                          route.toLowerCase() ||
+                        location.pathname
+                          .toLowerCase()
+                          .startsWith(`${route.toLowerCase()}/`);
+
+                      return (
+                        <div className={styles.settings} key={route}>
+                          <button
+                            type="button"
+                            className={`${styles.settings_button} ${
+                              isActive ? styles.navactive : ""
+                            }`}
+                            onClick={() => {
+                              navigate(route);
+                              setIsNavbarOpen(false);
+                            }}
+                          >
+                            <span>
+                              {permission.label ||
+                                route
+                                  .split("/")
+                                  .filter(Boolean)
+                                  .pop()
+                                  .replace(/-/g, " ")
+                                  .replace(/\b\w/g, (char) =>
+                                    char.toUpperCase(),
+                                  )}
+                            </span>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </>
+                )} */}
+                {(userRole === "admin" || userRole === "sub-admin") && (
+                  <>
+                    {/* Grouped sidebar menus */}
+                    {SIDEBAR_GROUPS.map((group) => {
+                      const hasPermission = hasParentPermission(
+                        group.parentRoutes,
+                      );
+
+                      if (!hasPermission) return null;
+
+                      const isTaskGroup = group.label === "Task Management";
+                      const isStudentGroup =
+                        group.label === "Student Management";
+                      const isEnquiryGroup =
+                        group.label === "Enquiry & Complaints";
+                      const isEventsGroup = group.label === "Events";
+
+                      const isOpen = isTaskGroup
+                        ? isTaskOpen
+                        : isStudentGroup
+                          ? isStudentOpen
+                          : isEnquiryGroup
+                            ? isEnquiryOpen
+                            : isEventsGroup
+                              ? isEventsOpen
+                              : false;
+
+                      const toggleGroup = () => {
+                        if (isTaskGroup) {
+                          setIsTaskOpen((prev) => !prev);
+                        } else if (isStudentGroup) {
+                          setIsStudentOpen((prev) => !prev);
+                        } else if (isEnquiryGroup) {
+                          setIsEnquiryOpen((prev) => !prev);
+                        } else if (isEventsGroup) {
+                          setIsEventsOpen((prev) => !prev);
+                        }
+                      };
+
+                      return (
+                        <div
+                          className={styles.settings}
+                          key={group.label}
+                          style={{
+                            order: Math.min(
+                              ...group.children.map((child) =>
+                                getPermissionOrder(child.route),
+                              ),
+                            ),
+                          }}
+                        >
+                          <button
+                            type="button"
+                            className={`${styles.settings_button} ${
+                              group.children.some(
+                                (child) =>
+                                  location.pathname.toLowerCase() ===
+                                    child.route.toLowerCase() ||
+                                  location.pathname
+                                    .toLowerCase()
+                                    .startsWith(
+                                      `${child.route.toLowerCase()}/`,
+                                    ),
+                              )
+                                ? styles.navactive
+                                : ""
+                            }`}
+                            onClick={toggleGroup}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                              }}
+                            >
+                              {getSidebarIcon(
+                                isTaskGroup
+                                  ? "/tasks"
+                                  : isStudentGroup
+                                    ? "/students"
+                                    : isEnquiryGroup
+                                      ? "/complaint"
+                                      : "/events",
+                                isTaskGroup
+                                  ? location.pathname.startsWith("/tasks")
+                                  : isStudentGroup
+                                    ? isStudentRoute
+                                    : isEnquiryGroup
+                                      ? isGrievanceRoute
+                                      : isEventsRoute,
+                              )}
+
+                              <span>{group.label}</span>
+                            </div>
+
+                            {isOpen ? (
+                              <FaChevronUp size={12} />
+                            ) : (
+                              <FaChevronDown size={12} />
+                            )}
+                          </button>
+
+                          {isOpen && (
+                            <div className={styles.submenu}>
+                              {[...group.children]
+                                .sort(
+                                  (a, b) =>
+                                    getPermissionOrder(a.route) -
+                                    getPermissionOrder(b.route),
+                                )
+                                .filter((child) => {
+                                  const route = child.route
+                                    .replace(/\/+$/, "")
+                                    .toLowerCase();
+
+                                  const hasViewPermission = (routes) =>
+                                    permissions.some((permission) => {
+                                      const permittedRoute = permission.route
+                                        ?.replace(/\/+$/, "")
+                                        .toLowerCase();
+
+                                      return (
+                                        routes.includes(permittedRoute) &&
+                                        (userRole === "admin" ||
+                                          permission.actions?.includes("view"))
+                                      );
+                                    });
+
+                                  // Task Management
+                                  if (group.label === "Task Management") {
+                                    return true;
+                                  }
+
+                                  // Student Management
+                                  if (group.label === "Student Management") {
+                                    if (route === "/students") {
+                                      return hasViewPermission([
+                                        "/students",
+                                        "/student",
+                                      ]);
+                                    }
+
+                                    if (route === "/attendence") {
+                                      return hasViewPermission([
+                                        "/attendence",
+                                        "/attendance",
+                                      ]);
+                                    }
+
+                                    // Attendance permission also shows Leave Management
+                                    if (route === "/attendence/leaverequest") {
+                                      return hasAttendancePermission();
+                                    }
+
+                                    if (route === "/academic") {
+                                      return hasViewPermission(["/academic"]);
+                                    }
+
+                                    return false;
+                                  }
+
+                                  // Enquiry & Complaints
+                                  // Enquiry & Complaints
+                                  if (group.label === "Enquiry & Complaints") {
+                                    // /enquiry parent permission shows both enquiry pages
+                                    if (
+                                      route === "/enquiry/aloschool" ||
+                                      route === "/enquiry/littlesteps"
+                                    ) {
+                                      return (
+                                        hasViewPermission(["/enquiry"]) ||
+                                        hasViewPermission([route])
+                                      );
+                                    }
+
+                                    // Complaint and Harassment use their individual permissions
+                                    return hasViewPermission([route]);
+                                  }
+
+                                  // Events
+                                  if (group.label === "Events") {
+                                    return hasViewPermission([route]);
+                                  }
+
+                                  return false;
+                                })
+                                .map((child) => {
+                                  const childRoute = child.route
+                                    .replace(/\/+$/, "")
+                                    .toLowerCase();
+
+                                  const currentRoute = location.pathname
+                                    .replace(/\/+$/, "")
+                                    .toLowerCase();
+
+                                  const isActive =
+                                    currentRoute === childRoute ||
+                                    currentRoute.startsWith(`${childRoute}/`);
+
+                                  return (
+                                    <button
+                                      type="button"
+                                      key={child.route}
+                                      className={`${styles.settings_button} text-sm ${
+                                        isActive ? styles.navactive : ""
+                                      }`}
+                                      onClick={() => {
+                                        navigate(child.route);
+                                        setIsNavbarOpen(false);
+                                      }}
+                                    >
+                                      {/* {getSidebarIcon(child.route, isActive)} */}
+                                      <span>{child.label}</span>
+                                    </button>
+                                  );
+                                })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Individual routes outside the groups */}
+                    {assignedRoutes
+                      .filter((permission) => {
+                        const route = permission.route
+                          ?.replace(/\/+$/, "")
+                          .toLowerCase();
+
+                        return !SIDEBAR_GROUPS.some((group) =>
+                          group.parentRoutes.some(
+                            (parentRoute) =>
+                              parentRoute.replace(/\/+$/, "").toLowerCase() ===
+                              route,
+                          ),
+                        );
+                      })
+                      .map((permission) => {
+                        const route = permission.route.replace(/\/+$/, "");
+
+                        const isActive =
+                          location.pathname.toLowerCase() ===
+                            route.toLowerCase() ||
+                          location.pathname
+                            .toLowerCase()
+                            .startsWith(`${route.toLowerCase()}/`);
+
+                        return (
+                          <div
+                            className={styles.settings}
+                            key={route}
+                            style={{ order: getPermissionOrder(route) }}
+                          >
+                            <button
+                              type="button"
+                              className={`${styles.settings_button} ${
+                                isActive ? styles.navactive : ""
+                              }`}
+                              onClick={() => {
+                                navigate(route);
+                                setIsNavbarOpen(false);
+                              }}
+                            >
+                              {getSidebarIcon(route, isActive)}
+                              <span>
+                                {permission.label ||
+                                  route
+                                    .split("/")
+                                    .filter(Boolean)
+                                    .pop()
+                                    .replace(/-/g, " ")
+                                    .replace(/\b\w/g, (char) =>
+                                      char.toUpperCase(),
+                                    )}
+                              </span>
+                            </button>
+                          </div>
+                        );
+                      })}
                   </>
                 )}
               </div>
@@ -750,7 +1482,10 @@ const Header = ({ setLoginUser }) => {
         </div>
         <div className={styles.content}>
           <div className={styles.header}>
-            <div className={styles.login_details} style={{ marginLeft: "auto" }}>
+            <div
+              className={styles.login_details}
+              style={{ marginLeft: "auto" }}
+            >
               <div
                 className={styles.userdetails}
                 onClick={() => setIsLogutOpen(true)}
@@ -770,7 +1505,13 @@ const Header = ({ setLoginUser }) => {
                     {userName}
                   </p>
                   <p className={styles.user_role}>
-                    {userRole === "admin" ? "Super Admin" : userRole === "sub-admin" ? "Sub Admin" : "User"}
+                    {userRole === "super-admin"
+                      ? "Super Admin"
+                      : userRole === "admin"
+                        ? "Admin"
+                        : userRole === "sub-admin"
+                          ? "Sub Admin"
+                          : "User"}
                   </p>
                 </div>
               </div>

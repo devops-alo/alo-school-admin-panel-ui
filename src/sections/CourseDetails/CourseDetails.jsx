@@ -23,6 +23,7 @@ import Pagination from "@mui/material/Pagination";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import Loader from "../../component/loader/Loader";
 import Modal from 'react-modal';
+import { hasActionAccess } from "../utils/permissions";
 
 const theme = createTheme({
   components: {
@@ -64,6 +65,14 @@ const CourseDetails = () => {
   const [loading, setLoading] = useState(false);
   const [courseloading, setCourseLoading] = useState(false);
   const [completedStudentCount, setCompletedStudentCount] = useState(0);
+  const canView = hasActionAccess("/course", "view");
+  const canAdd = hasActionAccess("/course", "add");
+  const canEdit = hasActionAccess("/course", "edit");
+  const canDelete = hasActionAccess("/course", "delete");
+
+  const canAddBatch = hasActionAccess("/batch", "add");
+  const canEditBatch = hasActionAccess("/batch", "edit");
+  const canDeleteBatch = hasActionAccess("/batch", "delete");
 
   const goBack = () => {
     navigate(-1);
@@ -137,6 +146,7 @@ const CourseDetails = () => {
   const [deleting, setDeleting] = useState(false);
 
   const handleDeleteCards = async (batch) => {
+    if (!canDeleteBatch || !batch) return;
     setDeleting(true);
     try {
       await updateCourseBatch(batch._id, { ...batch, deleted: true });
@@ -180,10 +190,17 @@ const CourseDetails = () => {
              <div className={styles.courseHeader}>
                <h2 className={styles.courseTitle}>{course.courseName}</h2>
 
-               <div className={styles.tableheadicon} onClick={handleEdit}>
-                 <FaPencilAlt />
-                 <span>Edit</span>
-               </div>
+               {canEdit && (
+                 <div
+                   className={styles.tableheadicon}
+                   onClick={handleEdit}
+                   role="button"
+                   tabIndex={0}
+                 >
+                   <FaPencilAlt />
+                   <span>Edit</span>
+                 </div>
+               )}
              </div>
 
              <div className={styles.courseInfoGrid}>
@@ -236,16 +253,20 @@ const CourseDetails = () => {
        <div className={styles.cardcreate}>
          <h2 className={styles.batchHeading}>Batches</h2>
 
-         <div
-           className={styles.createbtn}
-           onClick={() => {
-             console.log("Clicked");
-             setShowModal(true);
-           }}
-         >
-           <FontAwesomeIcon icon={faPlus} />
-           <span>Create Batch</span>
-         </div>
+         {canAddBatch && (
+           <div
+             className={styles.createbtn}
+             onClick={() => {
+               setSelectedBatch(null);
+               setShowModal(true);
+             }}
+             role="button"
+             tabIndex={0}
+           >
+             <FontAwesomeIcon icon={faPlus} />
+             <span>Create Batch</span>
+           </div>
+         )}
        </div>
 
        <div className={styles.cards}>
@@ -291,22 +312,32 @@ const CourseDetails = () => {
 
                  <div className={styles.iconsection}>
                    <div className={styles.icondiv}>
-                     <div
-                       className={styles.iconsectionsvg}
-                       onClick={() => handleEditCards(batch._id)}
-                     >
-                       <FaPencilAlt />
-                     </div>
+                     {canEditBatch && (
+                       <div
+                         className={styles.iconsectionsvg}
+                         onClick={() => handleEditCards(batch._id)}
+                         role="button"
+                         tabIndex={0}
+                         aria-label={`Edit ${batch.batchName}`}
+                       >
+                         <FaPencilAlt />
+                       </div>
+                     )}
 
-                     <div
-                       className={styles.iconsectionsvg}
-                       onClick={() => {
-                         setDeleteOpen(true);
-                         setId(batch);
-                       }}
-                     >
-                       <FaTrash color="#d92d20" />
-                     </div>
+                     {canDeleteBatch && (
+                       <div
+                         className={styles.iconsectionsvg}
+                         onClick={() => {
+                           setDeleteOpen(true);
+                           setId(batch);
+                         }}
+                         role="button"
+                         tabIndex={0}
+                         aria-label={`Delete ${batch.batchName}`}
+                       >
+                         <FaTrash color="#d92d20" />
+                       </div>
+                     )} 
                    </div>
 
                    <div
@@ -388,9 +419,14 @@ const CourseDetails = () => {
            },
          }}
        >
-         <h3 style={{ margin: "0 0 8px", fontSize: "1.05rem" }}>Delete batch?</h3>
-         <p style={{ margin: "0 0 20px", color: "#6b7280", fontSize: "0.9rem" }}>
-           This deletes {delid?.batchName || "this batch"}. This can't be undone.
+         <h3 style={{ margin: "0 0 8px", fontSize: "1.05rem" }}>
+           Delete batch?
+         </h3>
+         <p
+           style={{ margin: "0 0 20px", color: "#6b7280", fontSize: "0.9rem" }}
+         >
+           This deletes {delid?.batchName || "this batch"}. This can't be
+           undone.
          </p>
          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
            <button

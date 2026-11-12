@@ -26,8 +26,12 @@ import PieChartIcon from "@mui/icons-material/PieChart";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import CheckOutlinedIcon from "@mui/icons-material/CheckOutlined";
 import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
+import { hasActionAccess } from "../utils/permissions";
 
 const Sem = () => {
+  const canView = hasActionAccess("/academic", "view");
+  const canEdit = hasActionAccess("/academic", "edit");
+  const canExport = hasActionAccess("/academic", "view");
   const [performance, setPerformance] = useState([]);
   const [users, setUsers] = useState([]);
   const [batches, setBatches] = useState([]);
@@ -57,6 +61,7 @@ const Sem = () => {
   };
 
   const startEditMark = (index, currentMark) => {
+    if (!canEdit) return;
     setEditingMarkIndex(index);
     setEditMarkValue(currentMark === "AA" ? "AA" : String(currentMark ?? ""));
   };
@@ -67,6 +72,7 @@ const Sem = () => {
   };
 
   const saveEditMark = async (index) => {
+    if (!canEdit || savingMark) return;
     const outOf = viewRecord.Marks[index]?.totalMarks ?? 100;
     const value = editMarkValue.trim().toUpperCase();
 
@@ -324,6 +330,9 @@ const Sem = () => {
       console.log("Error downloading Excel:", err);
     }
   };
+  if (!canView) {
+    return <div>You don't have permission to view semester details.</div>;
+  }
   return (
     <div className={styles.container}>
       <ToastContainer />
@@ -331,10 +340,7 @@ const Sem = () => {
         <h3>Semester Details</h3>
 
         <div className={styles.filters}>
-          <select
-            value={batchId}
-            onChange={(e) => setBatchId(e.target.value)}
-          >
+          <select value={batchId} onChange={(e) => setBatchId(e.target.value)}>
             <option value="">All Batches</option>
             {batches.map((b) => (
               <option key={b._id} value={b._id}>
@@ -409,20 +415,25 @@ const Sem = () => {
             onChange={(e) => {
               setSearch(e.target.value);
               fetchUsers(e.target.value, courseId, batchId);
-              setoffset(1)
+              setoffset(1);
             }}
           />
 
-          {(courseId?.toString().trim() || batchId?.toString().trim() || semester?.toString().trim() || academic?.toString().trim()) && (
+          {(courseId?.toString().trim() ||
+            batchId?.toString().trim() ||
+            semester?.toString().trim() ||
+            academic?.toString().trim()) && (
             <button className={styles.clear} onClick={handlefilterSearch}>
               <IoClose />
             </button>
           )}
 
-          <button className={styles.exportBtn} onClick={getExcel}>
-            Export
-            <MdOutlineFileDownload />
-          </button>
+          {canExport && (
+            <button className={styles.exportBtn} onClick={getExcel}>
+              Export
+              <MdOutlineFileDownload />
+            </button>
+          )}
         </div>
       </div>
 
@@ -451,7 +462,6 @@ const Sem = () => {
                   </td>
                 </tr>
               ) : totalpages > 0 ? (
-
                 performance.map((row) => (
                   <tr key={row.id}>
                     <td>{row.userDetails.name}</td>
@@ -475,7 +485,6 @@ const Sem = () => {
                     </td>
                   </tr>
                 ))
-
               ) : (
                 <tr>
                   <td colSpan="9" className={styles.noData}>
@@ -535,7 +544,9 @@ const Sem = () => {
                     </span>
                     <div>
                       <span className={styles.label}>Name</span>
-                      <p className={styles.value}>{viewRecord.userDetails.name || "-"}</p>
+                      <p className={styles.value}>
+                        {viewRecord.userDetails.name || "-"}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -547,7 +558,9 @@ const Sem = () => {
                     </span>
                     <div>
                       <span className={styles.label}>Student ID</span>
-                      <p className={styles.value}>{viewRecord.userDetails.studentId || "-"}</p>
+                      <p className={styles.value}>
+                        {viewRecord.userDetails.studentId || "-"}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -559,7 +572,9 @@ const Sem = () => {
                     </span>
                     <div>
                       <span className={styles.label}>Semester</span>
-                      <p className={styles.value}>{viewRecord.exam || "-"}({viewRecord.Academic})</p>
+                      <p className={styles.value}>
+                        {viewRecord.exam || "-"}({viewRecord.Academic})
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -601,7 +616,7 @@ const Sem = () => {
                         <BookmarkIcon sx={{ fontSize: 16 }} /> Status
                       </span>
                     </th>
-                    <th>Action</th>
+                    {canEdit && <th>Action</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -609,7 +624,11 @@ const Sem = () => {
                     viewRecord.Marks.map((s, i) => {
                       const outOf = s.totalMarks ?? 100;
                       const status =
-                        s.mark === "AA" ? "AA" : s.mark >= outOf * 0.4 ? "P" : "RA";
+                        s.mark === "AA"
+                          ? "AA"
+                          : s.mark >= outOf * 0.4
+                            ? "P"
+                            : "RA";
                       const isEditing = editingMarkIndex === i;
                       return (
                         <tr key={i}>
@@ -626,14 +645,21 @@ const Sem = () => {
                                   onChange={(e) => {
                                     const value = e.target.value.toUpperCase();
 
-                                    if (value === "" || value === "A" || value === "AA") {
+                                    if (
+                                      value === "" ||
+                                      value === "A" ||
+                                      value === "AA"
+                                    ) {
                                       setEditMarkValue(value);
                                       return;
                                     }
 
                                     // Reject any keystroke that would push the value past
                                     // this subject's total marks.
-                                    if (/^\d+$/.test(value) && Number(value) <= outOf) {
+                                    if (
+                                      /^\d+$/.test(value) &&
+                                      Number(value) <= outOf
+                                    ) {
                                       setEditMarkValue(value);
                                     }
                                   }}
@@ -649,51 +675,56 @@ const Sem = () => {
                           <td>
                             <span
                               className={`${styles.statusPill} ${
-                                status === "P" ? styles.statusPillAmber : styles.statusPillGreen
+                                status === "P"
+                                  ? styles.statusPillAmber
+                                  : styles.statusPillGreen
                               }`}
                             >
                               {status}
                             </span>
                           </td>
-                          <td>
-                            {isEditing ? (
-                              <div className={styles.rowActions}>
+                          {canEdit && (
+                            <td>
+                              {isEditing ? (
+                                <div className={styles.rowActions}>
+                                  <button
+                                    type="button"
+                                    className={styles.iconBtn}
+                                    aria-label="Save mark"
+                                    disabled={savingMark}
+                                    onClick={() => saveEditMark(i)}
+                                  >
+                                    <CheckOutlinedIcon sx={{ fontSize: 16 }} />
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className={styles.iconBtn}
+                                    aria-label="Cancel"
+                                    disabled={savingMark}
+                                    onClick={cancelEditMark}
+                                  >
+                                    <CloseOutlinedIcon sx={{ fontSize: 16 }} />
+                                  </button>
+                                </div>
+                              ) : (
                                 <button
                                   type="button"
                                   className={styles.iconBtn}
-                                  aria-label="Save mark"
-                                  disabled={savingMark}
-                                  onClick={() => saveEditMark(i)}
+                                  aria-label={`Edit mark for ${s.subjectName}`}
+                                  onClick={() => startEditMark(i, s.mark)}
                                 >
-                                  <CheckOutlinedIcon sx={{ fontSize: 16 }} />
+                                  <EditOutlinedIcon sx={{ fontSize: 16 }} />
                                 </button>
-                                <button
-                                  type="button"
-                                  className={styles.iconBtn}
-                                  aria-label="Cancel"
-                                  disabled={savingMark}
-                                  onClick={cancelEditMark}
-                                >
-                                  <CloseOutlinedIcon sx={{ fontSize: 16 }} />
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                className={styles.iconBtn}
-                                aria-label={`Edit mark for ${s.subjectName}`}
-                                onClick={() => startEditMark(i, s.mark)}
-                              >
-                                <EditOutlinedIcon sx={{ fontSize: 16 }} />
-                              </button>
-                            )}
-                          </td>
+                              )}
+                            </td>
+                          )}
                         </tr>
                       );
                     })
                   ) : (
                     <tr>
-                      <td colSpan="4" className={styles.noData}>
+                      <td colSpan={canEdit ? 4 : 3} className={styles.noData}>
                         <div className={styles.emptyState}>
                           <AssignmentOutlinedIcon sx={{ fontSize: 28 }} />
                           <p style={{ margin: 0 }}>No Subject Marks Found</p>
@@ -714,17 +745,21 @@ const Sem = () => {
                   Total Marks:{" "}
                   <span className={styles.footerHighlight}>
                     {viewRecord.total || 0}/
-                    {(viewRecord.Marks || []).reduce((sum, s) => sum + (s.totalMarks ?? 100), 0)}
+                    {(viewRecord.Marks || []).reduce(
+                      (sum, s) => sum + (s.totalMarks ?? 100),
+                      0,
+                    )}
                   </span>
                   &nbsp;|&nbsp; Percentage:{" "}
-                  <span className={styles.footerHighlight}>{viewRecord.average ?? 0}%</span>
+                  <span className={styles.footerHighlight}>
+                    {viewRecord.average ?? 0}%
+                  </span>
                 </span>
               </div>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 };

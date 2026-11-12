@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import dashboradcss from './Dashborad.module.css'
 import profile from '../../assets/dashboardimgs/profile.png'
 import profile1 from '../../assets/dashboardimgs/profile1.png'
@@ -24,6 +24,7 @@ import {
 } from "../../api/Serviceapi";
 import { LuGraduationCap, LuUsers, LuCalendarCheck, LuCalendar, LuArrowRight } from "react-icons/lu";
 import Loader from "../../component/loader/Loader";
+import { hasActionAccess } from "../utils/permissions";
 
 export const Dashboard = () => {
     const [days, setdays] = useState('this_week');
@@ -37,11 +38,19 @@ export const Dashboard = () => {
     const [open, setOpen] = useState(false)
     const [status, setStatus] = useState('');
     const [leavestatus, setLeaveStatus] = useState('');
-
+    const canViewDashboard = hasActionAccess("/dashboard", "view");
+    const canViewStudents = hasActionAccess("/students", "view");
+    const canViewAttendance = hasActionAccess("/attendence", "view");
+    const canViewEvents = hasActionAccess("/events", "view");
     // Page-level batch filter - drives every widget below (except Events,
     // which isn't batch-scoped), defaulting to the primary batch.
     const [pageBatches, setPageBatches] = useState([]);
     const [pageBatchId, setPageBatchId] = useState('');
+    // The batch-scoped widgets wait for this, so they load once for the primary
+    // batch instead of first loading every batch ('' = All Batches) and then
+    // again. Without it the slow all-batches reply could land last and
+    // overwrite the selected batch's data.
+    const [pageBatchReady, setPageBatchReady] = useState(false);
 
     useEffect(() => {
         const fetchPageBatches = async () => {
@@ -53,6 +62,8 @@ export const Dashboard = () => {
                 if (primary) setPageBatchId(primary._id);
             } catch (err) {
                 console.error('error', err.response?.data || err);
+            } finally {
+                setPageBatchReady(true);
             }
         };
         fetchPageBatches();
@@ -126,34 +137,43 @@ export const Dashboard = () => {
 
 
     useEffect(() => {
+        if (!pageBatchReady) return
         setNotCheckedInPage(1)
         fetchNotCheckedIn()
-    }, [pageBatchId])
+    }, [pageBatchId, pageBatchReady])
     useEffect(() => {
         eventlist()
     }, [status])
     useEffect(() => {
+        if (!pageBatchReady) return
         leavelist()
-    }, [leavestatus, pageBatchId])
+    }, [leavestatus, pageBatchId, pageBatchReady])
     useEffect(() => {
+        if (!pageBatchReady) return
         countStudent()
-    }, [pageBatchId])
+    }, [pageBatchId, pageBatchReady])
     const [notCheckedInLoading, setNotCheckedInLoading] = useState(true);
+    const notCheckedInRequest = useRef(0);
 
     // Students with no attendance record yet for today, for the selected
     // batch - same endpoint/onLeave=noLeave the Attendance page uses.
     // The backend doesn't reliably honor limit/page for this filter, so we
     // fetch the whole list once and paginate 5-at-a-time on the client.
+    // Only the latest request fills the table: the All Batches list takes
+    // seconds, so switching batches quickly could otherwise let it land last.
     let fetchNotCheckedIn = async () => {
+        const request = ++notCheckedInRequest.current
         setNotCheckedInLoading(true)
         try {
             let res = await getAttendance(1000, 0, '', '', pageBatchId, todayDate, 'noLeave')
+            if (request !== notCheckedInRequest.current) return
             setNotCheckedInAll(res?.data?.data?.data || [])
         } catch (err) {
+            if (request !== notCheckedInRequest.current) return
             console.log(err)
             setNotCheckedInAll([])
         } finally {
-            setNotCheckedInLoading(false)
+            if (request === notCheckedInRequest.current) setNotCheckedInLoading(false)
         }
     }
 
@@ -181,8 +201,9 @@ export const Dashboard = () => {
     }, []);
 
     useEffect(() => {
+        if (!pageBatchReady) return;
         attendanceRate();
-    }, [pageBatchId]);
+    }, [pageBatchId, pageBatchReady]);
 
     const formatDate = (dateString) => {
         const date = new Date(dateString);
@@ -234,10 +255,10 @@ export const Dashboard = () => {
     }
 
     useEffect(() => {
-        if (!date) return;
+        if (!date || !pageBatchReady) return;
 
         attendanceDashboradRate()
-    }, [date, pageBatchId])
+    }, [date, pageBatchId, pageBatchReady])
 
     let attendanceDashboradRate = async () => {
         try {
@@ -260,582 +281,747 @@ export const Dashboard = () => {
         setLeaveStatus(e.target.value)
     }
 
-    // studentData is scoped to the same pageBatchId as Attendance, so the
-    // gap between the batch's active students and present+absent is
-    // whoever hasn't checked in yet.
-    const notCheckedInCount = Math.max(
-        0,
-        (studentData?.activeStudents ?? 0) - (Attendance.fetchCount ?? 0) - (Attendance.leaveApproved ?? 0),
-    );
-
+    // Counted by the rate API with the same rule as the Not Checked In table:
+    // active students in the batch with no attendance record for the day.
+    // (Working it out here from activeStudents only counted "ongoing"
+    // students, so it disagreed with the table.)
+    const notCheckedInCount = Attendance?.notCheckedInCount ?? 0;
+    if (!canViewDashboard) {
+      return <div>You don't have permission to view the dashboard.</div>;
+    }
     return (
-        <>
-            <div className={dashboradcss.dashboradcontainer}>
-                <div className={dashboradcss.pageHeader}>
-                    <div>
-                        <h4 className={dashboradcss.pageTitle}>
-                            Welcome Back, {localStorage.getItem('username') || 'Admin'}! <span className={dashboradcss.wave}>👋</span>
-                        </h4>
-                        <p className={dashboradcss.pageSubtitle}>Here's what's happening in your institute today.</p>
-                    </div>
-                    <div className={dashboradcss.headerActions}>
-                        <select
-                            value={pageBatchId}
-                            onChange={(e) => setPageBatchId(e.target.value)}
-                            className={dashboradcss.filterSelect}
+      <>
+        <div className={dashboradcss.dashboradcontainer}>
+          <div className={dashboradcss.pageHeader}>
+            <div>
+              <h4 className={dashboradcss.pageTitle}>
+                Welcome Back, {localStorage.getItem("username") || "Admin"}!{" "}
+                <span className={dashboradcss.wave}>👋</span>
+              </h4>
+              <p className={dashboradcss.pageSubtitle}>
+                Here's what's happening in your institute today.
+              </p>
+            </div>
+            <div className={dashboradcss.headerActions}>
+              <select
+                value={pageBatchId}
+                onChange={(e) => setPageBatchId(e.target.value)}
+                className={dashboradcss.filterSelect}
+              >
+                <option value="">All Batches</option>
+                {pageBatches.map((b) => (
+                  <option key={b._id} value={b._id}>
+                    {b.batchName}
+                  </option>
+                ))}
+              </select>
+              <div className={dashboradcss.dateBadge}>
+                <LuCalendar />
+                <div>
+                  <p>{formattedDate}</p>
+                  <span>{weekday}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className={dashboradcss.statsGrid}>
+            <div className={dashboradcss.dashcard}>
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className={dashboradcss.cardTitle}>Total Students</p>
+                </div>
+                <div
+                  className={`${dashboradcss.profileicon} ${dashboradcss.iconBlue}`}
+                >
+                  <LuGraduationCap />
+                </div>
+              </div>
+              <div className={dashboradcss.dashcount}>
+                {studentData?.totalStudents ?? 0}
+              </div>
+              <div className="flex justify-between items-center">
+                <div className={dashboradcss.avatars}>
+                  {studentData?.userDetails?.slice(0, 3).map((user, i) => (
+                    <img
+                      key={i}
+                      src={user.profileURL}
+                      alt={user.name}
+                      width={"100%"}
+                    />
+                  ))}
+                </div>
+
+                <div className={dashboradcss.avatar_text}>
+                  {studentData?.userDetails?.slice(0, 2).map((s, i) =>
+                    canViewStudents ? (
+                      <Link to="/students" key={i}>
+                        <span>
+                          {s.name}
+                          {i < Math.min(studentData?.userDetails?.length, 3) - 1
+                            ? ", "
+                            : ""}
+                        </span>
+                      </Link>
+                    ) : (
+                      <span key={i}>
+                        {s.name}
+                        {i < Math.min(studentData?.userDetails?.length, 3) - 1
+                          ? ", "
+                          : ""}
+                      </span>
+                    ),
+                  )}
+
+                  {studentData?.totalStudents > 2 &&
+                    (canViewStudents ? (
+                      <Link to="/students">
+                        +{studentData.totalStudents - 2} <span>others</span>
+                      </Link>
+                    ) : (
+                      <span>
+                        +{studentData.totalStudents - 2} <span>others</span>
+                      </span>
+                    ))}
+                </div>
+              </div>
+            </div>
+            <div className={dashboradcss.dashcard}>
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className={dashboradcss.cardTitle}>Active Students</p>
+                </div>
+                <div
+                  className={`${dashboradcss.profileicon} ${dashboradcss.iconGreen}`}
+                >
+                  <LuUsers />
+                </div>
+              </div>
+              <div className={dashboradcss.dashcount}>
+                {" "}
+                {studentData?.activeStudents ?? 0}
+              </div>
+              <div className="flex justify-between items-center">
+                <div className={dashboradcss.avatars}>
+                  {studentData?.userDetails?.slice(0, 3).map((user, i) => (
+                    <img
+                      key={i}
+                      src={user.profileURL}
+                      alt={user.name}
+                      width={"100%"}
+                    />
+                  ))}
+                </div>
+
+                <div className={dashboradcss.avatar_text}>
+                  {studentData?.userDetails?.slice(0, 2).map((s, i) =>
+                    canViewStudents ? (
+                      <Link to="/students" key={i}>
+                        <span>
+                          {s.name}
+                          {i < Math.min(studentData?.userDetails?.length, 3) - 1
+                            ? ", "
+                            : ""}
+                        </span>
+                      </Link>
+                    ) : (
+                      <span key={i}>
+                        {s.name}
+                        {i < Math.min(studentData?.userDetails?.length, 3) - 1
+                          ? ", "
+                          : ""}
+                      </span>
+                    ),
+                  )}
+
+                  {studentData?.totalStudents > 2 &&
+                    (canViewStudents ? (
+                      <Link to="/students">
+                        +{studentData.totalStudents - 2} <span>others</span>
+                      </Link>
+                    ) : (
+                      <span>
+                        +{studentData.totalStudents - 2} <span>others</span>
+                      </span>
+                    ))}
+                </div>
+              </div>
+            </div>
+            <div className={dashboradcss.dashcard}>
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className={dashboradcss.cardTitle}>Attendance rate</p>
+                  <p className={dashboradcss.dashdate}>{displayDate}</p>
+                </div>
+                <div
+                  className={`${dashboradcss.profileicon} ${dashboradcss.iconPurple}`}
+                >
+                  <LuCalendarCheck />
+                </div>
+              </div>
+              <div className="flex justify-between items-center pt-[20px]">
+                <div className={dashboradcss.dashcount}>
+                  {todayAttendance?.attendanceRate}
+                </div>
+                {canViewAttendance && (
+                  <Link
+                    to="/attendence"
+                    className={dashboradcss.viewDetailsLink}
+                  >
+                    View Details
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className={dashboradcss.widgetsGrid}>
+            <div className={`${dashboradcss.dashcard} ${dashboradcss.panelLg}`}>
+              <div className={dashboradcss.panelHead}>
+                <div>
+                  <h4 className={dashboradcss.panelTitle}>Leave Request</h4>
+                </div>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "10px" }}
+                >
+                  <FormControl
+                    variant="outlined"
+                    size="small"
+                    sx={{
+                      minWidth: 120,
+                      backgroundColor: "#ffffff",
+                      borderRadius: "10px",
+                      border: "1px solid #e5e7eb",
+                    }}
+                  >
+                    <Select
+                      value={leavestatus}
+                      onChange={handleLeaveStatusChange}
+                      displayEmpty
+                      IconComponent={KeyboardArrowDownIcon}
+                      sx={{
+                        "& .MuiOutlinedInput-notchedOutline": {
+                          border: "none",
+                        },
+                        fontSize: "14px",
+                        padding: "4px 10px",
+                        height: "38px",
+                        border: "none",
+                      }}
+                    >
+                      <MenuItem value="">All Status</MenuItem>
+
+                      <MenuItem value="Approved">Approved</MenuItem>
+                      <MenuItem value="Rejected">Rejected</MenuItem>
+                    </Select>
+                  </FormControl>
+                  {canViewAttendance && (
+                    <Link
+                      to={`/attendence/leaverequest/${todayDate}//`}
+                      className={dashboradcss.viewAllLink}
+                      aria-label="View All Leave Requests"
+                      title="View All"
+                    >
+                      <LuArrowRight />
+                    </Link>
+                  )}
+                </div>
+              </div>
+              <div className={dashboradcss.scrollLeave}>
+                {leaveListLoading ? (
+                  <Loader />
+                ) : leaveList?.length > 0 ? (
+                  leaveList.map((leave) => (
+                    <div
+                      key={leave._id}
+                      className={`flex justify-between items-center ${dashboradcss.listRow}`}
+                    >
+                      {/* Left section */}
+                      <div className="flex items-center">
+                        <div className="w-[50px] h-[50px] rounded-[50%] overflow-hidden mx-2 border-[3px] border-[#fff] border-solid">
+                          <img
+                            src={
+                              leave?.userDetails?.profileURL ||
+                              "/default-avatar.png"
+                            }
+                            alt="profile"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="mx-2">
+                          <h6 className="text-[14px]">
+                            {leave?.userDetails?.name || "Unknown User"}
+                          </h6>
+                          <p className="text-[12px] font-[400] text-[#888484]">
+                            ID: {leave?.userDetails?.studentId || "N/A"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Status button */}
+                      <div>
+                        <button
+                          className={`${dashboradcss.pill} ${
+                            leave?.status === "Rejected"
+                              ? dashboradcss.pillRejected
+                              : leave?.status === "Created"
+                                ? dashboradcss.pillPending
+                                : leave?.status === "Approved"
+                                  ? dashboradcss.pillApproved
+                                  : ""
+                          }`}
+                          style={{ minWidth: "90px" }}
                         >
-                            <option value="">All Batches</option>
-                            {pageBatches.map((b) => (
-                                <option key={b._id} value={b._id}>
-                                    {b.batchName}
-                                </option>
-                            ))}
-                        </select>
-                        <div className={dashboradcss.dateBadge}>
-                            <LuCalendar />
-                            <div>
-                                <p>{formattedDate}</p>
-                                <span>{weekday}</span>
-                            </div>
-                        </div>
+                          {leave?.status}
+                        </button>
+                      </div>
                     </div>
+                  ))
+                ) : (
+                  <div className={dashboradcss.noData}>
+                    <img
+                      src={nodata}
+                      alt=""
+                      width={"160px"}
+                      height={"160px"}
+                      className="m-auto"
+                    />
+                    <p className={dashboradcss.noDataText}>No Data Found</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className={dashboradcss.dashcard}>
+              <div className="flex flex-col h-100">
+                <div className={dashboradcss.panelHead}>
+                  <div>
+                    <h4 className={dashboradcss.panelTitle}>Attendance Rate</h4>
+                  </div>
+                  <div style={{ width: "150px" }}>
+                    <LocalizationProvider dateAdapter={AdapterDayjs}>
+                      <DatePicker
+                        value={date ? dayjs(date, "YYYY-MM-DD") : null} // keep ISO date format for binding
+                        onChange={(newValue) => {
+                          if (newValue) {
+                            const formatted =
+                              dayjs(newValue).format("YYYY-MM-DD"); // match <input type="date">
+                            setDate(formatted);
+                          } else {
+                            setDate("");
+                          }
+                        }}
+                        format="DD/MM/YYYY"
+                        slotProps={{
+                          textField: {
+                            fullWidth: true,
+                            placeholder: "DD/MM/YYYY",
+                            onClick: () => setOpen(true),
+                            error: Boolean(Error?.DateofBrith),
+                            sx: {
+                              "& .MuiPickersOutlinedInput-root": {
+                                height: "35px",
+                                outline: "none",
+                                backgroundColor: " #f2f2f2",
+                              },
+                              "& fieldset": {
+                                border: "none", // removes the default outline
+                              },
+                              "&:hover fieldset": {
+                                border: "none",
+                                outline: "none",
+                              },
+                              "& .MuiPickersOutlinedInput-root.Mui-focused .MuiPickersOutlinedInput-notchedOutline":
+                                {
+                                  border: "none",
+                                },
+                            },
+                          },
+                        }}
+                      />
+                    </LocalizationProvider>
+                  </div>
                 </div>
 
-                <div className={dashboradcss.statsGrid}>
-                    <div className={dashboradcss.dashcard}>
-                        <div className="flex justify-between items-center">
-                            <div><p className={dashboradcss.cardTitle}>Total Students</p></div>
-                            <div className={`${dashboradcss.profileicon} ${dashboradcss.iconBlue}`}><LuGraduationCap /></div>
-                        </div>
-                        <div className={dashboradcss.dashcount}>{studentData?.totalStudents ?? 0}</div>
-                        <div className="flex justify-between items-center">
+                <div className={dashboradcss.donutRow}>
+                  <div style={{ width: 150, height: 150, flexShrink: 0 }}>
+                    <CircularProgressbarWithChildren
+                      value={parseFloat(Attendance.attendanceRate) || 0}
+                      styles={buildStyles({
+                        pathColor: "url(#gradient)",
+                        trailColor: "#eef0f5",
+                        strokeLinecap: "butt",
+                      })}
+                    >
+                      <svg style={{ height: 0 }}>
+                        <defs>
+                          <linearGradient
+                            id="gradient"
+                            gradientTransform="rotate(90)"
+                          >
+                            <stop offset="0%" stopColor="#144196" />
+                            <stop offset="100%" stopColor="#0b2456" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                      <div className={dashboradcss.donutCenter}>
+                        <strong>{Attendance.attendanceRate}</strong>
+                        <span>Attendance Rate</span>
+                      </div>
+                    </CircularProgressbarWithChildren>
+                  </div>
 
-                            <div className={dashboradcss.avatars}>
-                                {studentData?.userDetails?.slice(0, 3).map((user, i) => (
-                                    <img key={i} src={user.profileURL} alt={user.name} width={'100%'} />
-                                ))}
-                            </div>
-
-                            <div className={dashboradcss.avatar_text}>
-                                {studentData?.userDetails?.slice(0, 2).map((s, i) => (
-                                    <Link to="/students" key={i}> <span key={i}>
-                                        {s.name}
-                                        {i < Math.min(studentData?.userDetails?.length, 3) - 1 && ", "}
-                                    </span></Link>
-                                ))}
-
-                                {studentData?.totalStudents > 2 && (
-                                    <>
-                                        <Link to="/students">  +{studentData?.totalStudents - 2} <span>others</span></Link>
-                                    </>
-                                )}
-                            </div>
-
-                        </div>
+                  <div className={dashboradcss.donutLegend}>
+                    <div className={dashboradcss.legendRow}>
+                      <span
+                        className={`${dashboradcss.legendDot} ${dashboradcss.legendDotBlue}`}
+                      />
+                      <span className={dashboradcss.legendLabel}>Present</span>
+                      <span className={dashboradcss.legendValue}>
+                        {Attendance.fetchCount ?? 0}
+                      </span>
                     </div>
-                    <div className={dashboradcss.dashcard}>
-                        <div className="flex justify-between items-center">
-                            <div><p className={dashboradcss.cardTitle}>Active Students</p></div>
-                            <div className={`${dashboradcss.profileicon} ${dashboradcss.iconGreen}`}><LuUsers /></div>
-                        </div>
-                        <div className={dashboradcss.dashcount}>      {studentData?.activeStudents ?? 0}
-                        </div>
-                        <div className="flex justify-between items-center">
-
-                            <div className={dashboradcss.avatars}>
-                                {studentData?.userDetails?.slice(0, 3).map((user, i) => (
-                                    <img key={i} src={user.profileURL} alt={user.name} width={'100%'} />
-                                ))}
-                            </div>
-
-                            <div className={dashboradcss.avatar_text}>
-                                {studentData?.userDetails?.slice(0, 2).map((s, i) => (
-                                    <Link to="/students" key={i}> <span key={i}>
-                                        {s.name}
-                                        {i < Math.min(studentData?.userDetails?.length, 3) - 1 && ", "}
-                                    </span></Link>
-                                ))}
-
-                                {studentData?.totalStudents > 2 && (
-                                    <>
-                                        <Link to="/students">   +{studentData?.totalStudents - 2} <span>others</span></Link>
-                                    </>
-                                )}
-                            </div>
-                        </div>
+                    <div className={dashboradcss.legendRow}>
+                      <span
+                        className={`${dashboradcss.legendDot} ${dashboradcss.legendDotGray}`}
+                      />
+                      <span className={dashboradcss.legendLabel}>Absent</span>
+                      <span className={dashboradcss.legendValue}>
+                        {Attendance.leaveApproved ?? 0}
+                      </span>
                     </div>
-                    <div className={dashboradcss.dashcard} >
-                        <div className="flex justify-between items-center">
-                            <div><p className={dashboradcss.cardTitle}>Attendance rate</p><p className={dashboradcss.dashdate}>{displayDate}</p></div>
-                            <div className={`${dashboradcss.profileicon} ${dashboradcss.iconPurple}`}><LuCalendarCheck /></div>
-                        </div>
-                        <div className="flex justify-between items-center pt-[20px]">
-                            <div className={dashboradcss.dashcount}>{todayAttendance?.attendanceRate}</div>
-                            <Link to='/attendence'><div className={dashboradcss.viewDetailsLink}>View Details</div></Link>
-                        </div>
+                    <div className={dashboradcss.legendRow}>
+                      <span
+                        className={`${dashboradcss.legendDot} ${dashboradcss.legendDotAmber}`}
+                      />
+                      <span className={dashboradcss.legendLabel}>
+                        Not Checked In
+                      </span>
+                      <span className={dashboradcss.legendValue}>
+                        {notCheckedInCount}
+                      </span>
                     </div>
-
+                  </div>
                 </div>
-                <div className={dashboradcss.widgetsGrid}>
-                    <div className={`${dashboradcss.dashcard} ${dashboradcss.panelLg}`} >
-                        <div className={dashboradcss.panelHead}>
-                            <div><h4 className={dashboradcss.panelTitle}>Leave Request</h4></div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <FormControl
-                                    variant="outlined"
-                                    size="small"
-                                    sx={{
-                                        minWidth: 120,
-                                        backgroundColor: '#ffffff',
-                                        borderRadius: '10px',
-                                        border: '1px solid #e5e7eb'
-                                    }}
-                                >
-                                    <Select
-                                        value={leavestatus}
-                                        onChange={handleLeaveStatusChange}
-                                        displayEmpty
-                                        IconComponent={KeyboardArrowDownIcon}
-                                        sx={{
-                                            '& .MuiOutlinedInput-notchedOutline': {
-                                                border: 'none',
-                                            },
-                                            fontSize: '14px',
-                                            padding: '4px 10px',
-                                            height: '38px',
-                                            border: 'none'
-                                        }}
-                                    >
-                                        <MenuItem value="">All Status</MenuItem>
+              </div>
+            </div>
+            <div className={`${dashboradcss.dashcard} ${dashboradcss.panelLg}`}>
+              <div className={dashboradcss.panelHead}>
+                <div>
+                  <h4 className={dashboradcss.panelTitle}>Events</h4>
+                </div>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "10px" }}
+                >
+                  <FormControl
+                    variant="outlined"
+                    size="small"
+                    sx={{
+                      minWidth: 120,
+                      backgroundColor: "#ffffff",
+                      borderRadius: "10px",
+                      border: "1px solid #e5e7eb",
+                    }}
+                  >
+                    <Select
+                      value={status}
+                      onChange={statusChange}
+                      displayEmpty
+                      IconComponent={KeyboardArrowDownIcon}
+                      sx={{
+                        "& .MuiOutlinedInput-notchedOutline": {
+                          border: "none",
+                        },
+                        fontSize: "14px",
+                        padding: "4px 10px",
+                        height: "38px",
+                        border: "none",
+                      }}
+                    >
+                      <MenuItem value="">All Events</MenuItem>
 
-                                        <MenuItem value="Approved">Approved</MenuItem>
-                                        <MenuItem value="Rejected">Rejected</MenuItem>
-
-                                    </Select>
-                                </FormControl>
-                                <Link to={`/attendence/leaverequest/${todayDate}//`} className={dashboradcss.viewAllLink} aria-label="View All" title="View All">
-                                    <LuArrowRight />
-                                </Link>
-
+                      <MenuItem value="upcoming">Upcoming</MenuItem>
+                      <MenuItem value="ongoing">Ongoing</MenuItem>
+                      <MenuItem value="completed">Completed</MenuItem>
+                    </Select>
+                  </FormControl>
+                  {canViewEvents && (
+                    <Link
+                      to="/events"
+                      className={dashboradcss.viewAllLink}
+                      aria-label="View All Events"
+                      title="View All"
+                    >
+                      <LuArrowRight />
+                    </Link>
+                  )}
+                </div>
+              </div>
+              <div className={dashboradcss.scrollEvents}>
+                {eventListLoading ? (
+                  <Loader />
+                ) : eventList?.length > 0 ? (
+                  eventList.map((item) => {
+                    const { day, month, year } = formatDate(item.date);
+                    return (
+                      <div key={item._id} className={dashboradcss.eventCard}>
+                        <div className="flex items-center w-[70%]">
+                          <div>
+                            <h6 className={dashboradcss.eventTitle}>
+                              {item?.title}
+                            </h6>
+                            <p className={dashboradcss.eventDesc}>
+                              {item?.description}
+                            </p>
+                            <div
+                              className={dashboradcss.pill}
+                              style={{
+                                background:
+                                  (item.status === "upcoming" && "#fff3e0") ||
+                                  (item.status === "ongoing" && "#e8eefc") ||
+                                  (item.status === "completed" && "#e7f7ee"),
+                                color:
+                                  (item.status === "upcoming" && "#f59e0b") ||
+                                  (item.status === "ongoing" && "#2563eb") ||
+                                  (item.status === "completed" && "#12805c"),
+                              }}
+                            >
+                              {item?.status}
                             </div>
+                          </div>
                         </div>
-                        <div className={dashboradcss.scrollLeave} >
-                            {leaveListLoading ? (
-                                <Loader />
-                            ) : leaveList?.length > 0 ? (
-                                leaveList.map((leave) => (
-                                    <div
-                                        key={leave._id}
-                                        className={`flex justify-between items-center ${dashboradcss.listRow}`}
-                                    >
-                                        {/* Left section */}
-                                        <div className="flex items-center">
-                                            <div className="w-[50px] h-[50px] rounded-[50%] overflow-hidden mx-2 border-[3px] border-[#fff] border-solid">
-                                                <img
-                                                    src={leave?.userDetails?.profileURL || "/default-avatar.png"}
-                                                    alt="profile"
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            </div>
-                                            <div className="mx-2">
-                                                <h6 className="text-[14px]">{leave?.userDetails?.name || "Unknown User"}</h6>
-                                                <p className="text-[12px] font-[400] text-[#888484]">
-                                                    ID: {leave?.userDetails?.studentId || "N/A"}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {/* Status button */}
-                                        <div>
-                                            <button
-                                                className={`${dashboradcss.pill} ${leave?.status === "Rejected"
-                                                    ? dashboradcss.pillRejected
-                                                    : leave?.status === "Created"
-                                                        ? dashboradcss.pillPending
-                                                        : leave?.status === "Approved"
-                                                            ? dashboradcss.pillApproved
-                                                            : ""
-                                                    }`}
-                                                style={{ minWidth: '90px' }}
-                                            >
-                                                {leave?.status}
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className={dashboradcss.noData}>
-                                    <img src={nodata} alt="" width={'160px'} height={'160px'} className='m-auto' />
-                                    <p className={dashboradcss.noDataText}>No Data Found</p>
-                                </div>
-                            )}
-
-
+                        <div>
+                          <div className={dashboradcss.eventDateBox}>
+                            <h5 className={dashboradcss.eventDay}>{day}</h5>
+                            <p className={dashboradcss.eventMonth}>
+                              {month} {year}
+                            </p>
+                            <p className={dashboradcss.eventTime}>
+                              {item?.time}
+                            </p>
+                          </div>
                         </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className={dashboradcss.noData}>
+                    <img
+                      src={nodata}
+                      alt=""
+                      width={"160px"}
+                      height={"160px"}
+                      className="m-auto"
+                    />
+                    <p className={dashboradcss.noDataText}>No Data Found</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div
+              className={`${dashboradcss.dashcard} ${dashboradcss.panelFull}`}
+            >
+              <div className={dashboradcss.panelHead}>
+                <div>
+                  <h4 className={dashboradcss.panelTitle}>Not Checked In</h4>
+                </div>
+                <div className={dashboradcss.toppersFilters}>
+                  <select
+                    value={pageBatchId}
+                    onChange={(e) => setPageBatchId(e.target.value)}
+                    className={dashboradcss.filterSelect}
+                  >
+                    <option value="">All Batches</option>
+                    {pageBatches.map((b) => (
+                      <option key={b._id} value={b._id}>
+                        {b.batchName}
+                      </option>
+                    ))}
+                  </select>
+                  {hasActionAccess("/students", "view") && (
+                    <Link to="/students" className={dashboradcss.viewAllLink}>
+                      <LuArrowRight />
+                    </Link>
+                  )}
+                </div>
+              </div>
+
+              <div className={dashboradcss.tableWrap}>
+                <table className={dashboradcss.table}>
+                  <thead>
+                    <tr>
+                      <th>Profile</th>
+                      <th>ID No</th>
+                      <th>Name</th>
+                      <th>Mobile</th>
+                      <th>Course</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {notCheckedInLoading ? (
+                      <tr>
+                        <td colSpan="5">
+                          <Loader />
+                        </td>
+                      </tr>
+                    ) : notCheckedInList?.length > 0 ? (
+                      notCheckedInList.map((item) => (
+                        <tr key={item._id}>
+                          <td>
+                            <img
+                              src={
+                                item?.userDetails?.profileURL ??
+                                item?.profileURL
+                              }
+                              alt="Profile"
+                              className="rounded-full w-10 h-10"
+                            />{" "}
+                          </td>
+                          <td>
+                            {item?.userDetails?.studentId ?? item?.studentId}
+                          </td>
+                          <td style={{ textTransform: "capitalize" }}>
+                            {item?.userDetails?.name ?? item?.name}
+                          </td>
+                          <td>
+                            {item?.userDetails?.mobileNo ?? item?.mobileNo}
+                          </td>
+                          <td>{item?.courseDetails?.courseName}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="5">
+                          <div className={dashboradcss.noData}>
+                            <img
+                              src={nodata}
+                              alt=""
+                              width={"120px"}
+                              height={"120px"}
+                              className="m-auto"
+                            />
+                            <p className={dashboradcss.noDataText}>
+                              No Data Found
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {notCheckedInTotal > notCheckedInLimit && (
+                <div className="flex justify-end mt-2">
+                  <Pagination
+                    size="small"
+                    count={Math.ceil(notCheckedInTotal / notCheckedInLimit)}
+                    page={notCheckedInPage}
+                    onChange={(e, value) => setNotCheckedInPage(value)}
+                  />
+                </div>
+              )}
+            </div>
+            <div className={dashboradcss.panelFull}>
+              <div className={dashboradcss.dashcard}>
+                <div className={dashboradcss.panelHead}>
+                  <h4 className={dashboradcss.panelTitle}>Toppers</h4>
+
+                  <div className={dashboradcss.toppersFilters}>
+                    <select
+                      value={batchId}
+                      onChange={(e) => {
+                        setBatchId(e.target.value);
+                        setCourseId("");
+                      }}
+                      className={dashboradcss.filterSelect}
+                    >
+                      <option value="">All Batches</option>
+                      {batches.map((b) => (
+                        <option key={b._id} value={b._id}>
+                          {b.batchName}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={courseId}
+                      disabled={!batchId}
+                      onChange={(e) => setCourseId(e.target.value)}
+                      className={dashboradcss.filterSelect}
+                    >
+                      <option value="">All Courses</option>
+                      {filteredCourses.map((c) => (
+                        <option key={c.courseId} value={c.courseId}>
+                          {c.courseName}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={semester}
+                      onChange={(e) => setSemester(e.target.value)}
+                      className={dashboradcss.filterSelect}
+                    >
+                      <option value="sem1">Semester 1</option>
+                      <option value="sem2">Semester 2</option>
+                    </select>
+
+                    {/* <FormControl size="small"> */}
+                    <select
+                      value={academic}
+                      onChange={(e) => setAcademic(e.target.value)}
+                      className={dashboradcss.filterSelect}
+                    >
+                      <option value="Term1">Term 1</option>
+                      <option value="Term2">Term 2</option>
+                      <option value="Semester">Semester</option>
+                    </select>
+                    {/* </FormControl> */}
+                  </div>
+                </div>
+                {termToppersLoading ? (
+                  <Loader />
+                ) : termToppers.length > 0 ? (
+                  termToppers.map((s, i) => (
+                    <div key={s._id} className={dashboradcss.topperRow}>
+                      <div className="flex items-center gap-3">
+                        <span className={dashboradcss.topperRank}>{i + 1}</span>
+
+                        <img
+                          src={s.userDetails?.profileURL}
+                          className="w-10 h-10 rounded-full"
+                          alt="profile"
+                        />
+
+                        <div>
+                          <p className={dashboradcss.topperName}>
+                            {s.userDetails?.name}
+                          </p>
+                          <p className={dashboradcss.topperMeta}>
+                            {s.courseDetails?.courseName}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className={dashboradcss.topperScore}>
+                        {s.average}%
+                      </div>
                     </div>
-                    <div className={dashboradcss.dashcard}>
-                        <div className='flex flex-col h-100'>
-                            <div className={dashboradcss.panelHead}>
-                                <div><h4 className={dashboradcss.panelTitle}>Attendance Rate</h4></div>
-                                <div style={{ width: '150px', }}>
-                                    <LocalizationProvider dateAdapter={AdapterDayjs}>
-                                        <DatePicker
-                                            value={date ? dayjs(date, "YYYY-MM-DD") : null}   // keep ISO date format for binding
-                                            onChange={(newValue) => {
-                                                if (newValue) {
-                                                    const formatted = dayjs(newValue).format("YYYY-MM-DD"); // match <input type="date">
-                                                    setDate(formatted);
-                                                } else {
-                                                    setDate("");
-                                                }
-                                            }}
-                                            format="DD/MM/YYYY"
-                                            slotProps={{
-                                                textField: {
-                                                    fullWidth: true,
-                                                    placeholder: 'DD/MM/YYYY',
-                                                    onClick: () => setOpen(true),
-                                                    error: Boolean(Error?.DateofBrith),
-                                                    sx: {
-                                                        '& .MuiPickersOutlinedInput-root': {
-                                                            height: '35px',
-                                                            outline: 'none',
-                                                            backgroundColor: ' #f2f2f2'
-                                                        },
-                                                        '& fieldset': {
-                                                            border: 'none', // removes the default outline
-                                                        },
-                                                        '&:hover fieldset': {
-                                                            border: 'none',
-                                                            outline: 'none'
-                                                        },
-                                                        '& .MuiPickersOutlinedInput-root.Mui-focused .MuiPickersOutlinedInput-notchedOutline': {
-                                                            border: 'none'
-                                                        }
-                                                    },
-                                                },
-                                            }}
-                                        />
-                                    </LocalizationProvider>
-                                </div>
-                            </div>
+                  ))
+                ) : (
+                  <div className={dashboradcss.noData}>
+                    <img
+                      src={nodata}
+                      alt=""
+                      width={"160px"}
+                      height={"160px"}
+                      className="m-auto"
+                    />
+                    <p className={dashboradcss.noDataText}>No Data Found</p>
+                  </div>
+                )}
+              </div>
 
-                            <div className={dashboradcss.donutRow}>
-                                <div style={{ width: 150, height: 150, flexShrink: 0 }}>
-                                    <CircularProgressbarWithChildren
-                                        value={parseFloat(Attendance.attendanceRate) || 0}
-                                        styles={buildStyles({
-                                            pathColor: 'url(#gradient)',
-                                            trailColor: '#eef0f5',
-                                            strokeLinecap: 'butt',
-                                        })}
-                                    >
-
-                                        <svg style={{ height: 0 }}>
-                                            <defs>
-                                                <linearGradient id="gradient" gradientTransform="rotate(90)">
-                                                    <stop offset="0%" stopColor="#144196" />
-                                                    <stop offset="100%" stopColor="#0b2456" />
-                                                </linearGradient>
-                                            </defs>
-                                        </svg>
-                                        <div className={dashboradcss.donutCenter}>
-                                            <strong>{Attendance.attendanceRate}</strong>
-                                            <span>Attendance Rate</span>
-                                        </div>
-                                    </CircularProgressbarWithChildren>
-                                </div>
-
-                                <div className={dashboradcss.donutLegend}>
-                                    <div className={dashboradcss.legendRow}>
-                                        <span className={`${dashboradcss.legendDot} ${dashboradcss.legendDotBlue}`} />
-                                        <span className={dashboradcss.legendLabel}>Present</span>
-                                        <span className={dashboradcss.legendValue}>{Attendance.fetchCount ?? 0}</span>
-                                    </div>
-                                    <div className={dashboradcss.legendRow}>
-                                        <span className={`${dashboradcss.legendDot} ${dashboradcss.legendDotGray}`} />
-                                        <span className={dashboradcss.legendLabel}>Absent</span>
-                                        <span className={dashboradcss.legendValue}>{Attendance.leaveApproved ?? 0}</span>
-                                    </div>
-                                    <div className={dashboradcss.legendRow}>
-                                        <span className={`${dashboradcss.legendDot} ${dashboradcss.legendDotAmber}`} />
-                                        <span className={dashboradcss.legendLabel}>Not Checked In</span>
-                                        <span className={dashboradcss.legendValue}>{notCheckedInCount}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                    <div className={`${dashboradcss.dashcard} ${dashboradcss.panelLg}`}>
-                        <div className={dashboradcss.panelHead}>
-                            <div><h4 className={dashboradcss.panelTitle}>Events</h4></div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <FormControl
-                                    variant="outlined"
-                                    size="small"
-                                    sx={{
-                                        minWidth: 120,
-                                        backgroundColor: '#ffffff',
-                                        borderRadius: '10px',
-                                        border: '1px solid #e5e7eb'
-                                    }}
-                                >
-                                    <Select
-                                        value={status}
-                                        onChange={statusChange}
-                                        displayEmpty
-                                        IconComponent={KeyboardArrowDownIcon}
-                                        sx={{
-                                            '& .MuiOutlinedInput-notchedOutline': {
-                                                border: 'none',
-                                            },
-                                            fontSize: '14px',
-                                            padding: '4px 10px',
-                                            height: '38px',
-                                            border: 'none'
-                                        }}
-                                    >
-                                        <MenuItem value="">All Events</MenuItem>
-
-                                        <MenuItem value="upcoming">Upcoming</MenuItem>
-                                        <MenuItem value="ongoing">Ongoing</MenuItem>
-                                        <MenuItem value="completed">Completed</MenuItem>
-
-                                    </Select>
-                                </FormControl>
-                                <Link to='/events' className={dashboradcss.viewAllLink} aria-label="View All" title="View All"><LuArrowRight /></Link>
-
-                            </div>
-
-                        </div>
-                        <div className={dashboradcss.scrollEvents}>
-                            {eventListLoading ? (
-                                <Loader />
-                            ) : eventList?.length > 0 ? (
-                                eventList.map((item) => {
-                                    const { day, month, year } = formatDate(item.date);
-                                    return (
-                                        <div key={item._id} className={dashboradcss.eventCard}>
-                                            <div className="flex items-center w-[70%]">
-
-                                                <div>
-                                                    <h6 className={dashboradcss.eventTitle}>{item?.title}</h6>
-                                                    <p className={dashboradcss.eventDesc}>
-                                                        {item?.description}
-                                                    </p>
-                                                    <div className={dashboradcss.pill} style={{
-                                                        background: item.status === 'upcoming' && '#fff3e0' || item.status === 'ongoing' && '#e8eefc' || item.status === 'completed' && '#e7f7ee',
-                                                        color: item.status === 'upcoming' && '#f59e0b' || item.status === 'ongoing' && '#2563eb' || item.status === 'completed' && '#12805c',
-
-                                                    }}>{item?.status}</div>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <div className={dashboradcss.eventDateBox}>
-                                                    <h5 className={dashboradcss.eventDay}>{day}</h5>
-                                                    <p className={dashboradcss.eventMonth}>{month} {year}</p>
-                                                    <p className={dashboradcss.eventTime}>{item?.time}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )
-                                })
-                            ) : (
-                                <div className={dashboradcss.noData}>
-                                    <img src={nodata} alt="" width={'160px'} height={'160px'} className='m-auto' />
-                                    <p className={dashboradcss.noDataText}>No Data Found</p>
-                                </div>
-
-                            )}
-                        </div>
-
-                    </div>
-                    <div className={`${dashboradcss.dashcard} ${dashboradcss.panelFull}`}>
-                        <div className={dashboradcss.panelHead}>
-                            <div><h4 className={dashboradcss.panelTitle}>Not Checked In</h4></div>
-                            <div className={dashboradcss.toppersFilters}>
-                                <select
-                                    value={pageBatchId}
-                                    onChange={(e) => setPageBatchId(e.target.value)}
-                                    className={dashboradcss.filterSelect}
-                                >
-                                    <option value="">All Batches</option>
-                                    {pageBatches.map((b) => (
-                                        <option key={b._id} value={b._id}>
-                                            {b.batchName}
-                                        </option>
-                                    ))}
-                                </select>
-                                <Link to='/students' className={dashboradcss.viewAllLink} aria-label="View All" title="View All"><LuArrowRight /></Link>
-                            </div>
-                        </div>
-
-                        <div className={dashboradcss.tableWrap}>
-                            <table className={dashboradcss.table}>
-                                <thead>
-                                    <tr >
-                                        <th>Profile</th>
-                                        <th>ID No</th>
-                                        <th>Name</th>
-                                        <th>Mobile</th>
-                                        <th>Course</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {notCheckedInLoading ? (
-                                        <tr>
-                                            <td colSpan="5"><Loader /></td>
-                                        </tr>
-                                    ) : notCheckedInList?.length > 0 ? (
-                                        notCheckedInList.map((item) => (
-                                            <tr key={item._id}>
-                                                <td>
-                                                    <img src={item?.userDetails?.profileURL ?? item?.profileURL} alt="Profile" className="rounded-full w-10 h-10" />                                           </td>
-                                                <td>{item?.userDetails?.studentId ?? item?.studentId}</td>
-                                                <td style={{ textTransform: 'capitalize' }}>{item?.userDetails?.name ?? item?.name}</td>
-                                                <td>{item?.userDetails?.mobileNo ?? item?.mobileNo}</td>
-                                                <td>{item?.courseDetails?.courseName}</td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan="5">
-                                                <div className={dashboradcss.noData}>
-                                                    <img src={nodata} alt="" width={'120px'} height={'120px'} className='m-auto' />
-                                                    <p className={dashboradcss.noDataText}>No Data Found</p>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )}
-
-
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {notCheckedInTotal > notCheckedInLimit && (
-                            <div className="flex justify-end mt-2">
-                                <Pagination
-                                    size="small"
-                                    count={Math.ceil(notCheckedInTotal / notCheckedInLimit)}
-                                    page={notCheckedInPage}
-                                    onChange={(e, value) => setNotCheckedInPage(value)}
-                                />
-                            </div>
-                        )}
-
-                    </div>
-                    <div className={dashboradcss.panelFull}>
-
-                        <div className={dashboradcss.dashcard}>
-                            <div className={dashboradcss.panelHead}>
-                                <h4 className={dashboradcss.panelTitle}>Toppers</h4>
-
-
-
-
-
-
-                                <div className={dashboradcss.toppersFilters}>
-                                    <select
-                                        value={batchId}
-                                        onChange={(e) => {
-                                            setBatchId(e.target.value);
-                                            setCourseId("");
-                                        }}
-                                        className={dashboradcss.filterSelect}
-                                    >
-                                        <option value="">All Batches</option>
-                                        {batches.map((b) => (
-                                            <option key={b._id} value={b._id}>
-                                                {b.batchName}
-                                            </option>
-                                        ))}
-                                    </select>
-
-
-                                    <select
-                                        value={courseId}
-                                        disabled={!batchId}
-                                        onChange={(e) => setCourseId(e.target.value)}
-                                        className={dashboradcss.filterSelect}
-
-                                    >
-                                        <option value="">All Courses</option>
-                                        {filteredCourses.map((c) => (
-                                            <option key={c.courseId} value={c.courseId}>
-                                                {c.courseName}
-                                            </option>
-                                        ))}
-                                    </select>
-
-                                    <select
-                                        value={semester}
-                                        onChange={(e) => setSemester(e.target.value)}
-                                        className={dashboradcss.filterSelect}
-
-                                    >
-                                        <option value="sem1">Semester 1</option>
-                                        <option value="sem2">Semester 2</option>
-                                    </select>
-
-                                    {/* <FormControl size="small"> */}
-                                    <select
-                                        value={academic}
-                                        onChange={(e) => setAcademic(e.target.value)}
-                                        className={dashboradcss.filterSelect}
-                                    >
-                                        <option value="Term1">Term 1</option>
-                                        <option value="Term2">Term 2</option>
-                                        <option value="Semester">Semester</option>
-                                    </select>
-                                    {/* </FormControl> */}
-                                </div>
-                            </div>
-                            {termToppersLoading ? (
-                                <Loader />
-                            ) : termToppers.length > 0 ? (
-                                termToppers.map((s, i) => (
-                                    <div
-                                        key={s._id}
-                                        className={dashboradcss.topperRow}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <span className={dashboradcss.topperRank}>{i + 1}</span>
-
-                                            <img
-                                                src={s.userDetails?.profileURL}
-                                                className="w-10 h-10 rounded-full"
-                                                alt="profile"
-                                            />
-
-                                            <div>
-                                                <p className={dashboradcss.topperName}>
-                                                    {s.userDetails?.name}
-                                                </p>
-                                                <p className={dashboradcss.topperMeta}>
-                                                    {s.courseDetails?.courseName}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className={dashboradcss.topperScore}>
-                                            {s.average}%
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className={dashboradcss.noData}>
-                                    <img src={nodata} alt="" width={'160px'} height={'160px'} className='m-auto' />
-                                    <p className={dashboradcss.noDataText}>No Data Found</p>
-                                </div>
-                            )}
-
-                        </div>
-
-
-                        {/* <div className={dashboradcss.dashcard} style={{ height: "320px",overflow:'auto' }}>
+              {/* <div className={dashboradcss.dashcard} style={{ height: "320px",overflow:'auto' }}>
                         <div className="flex justify-between items-center mx-2 mb-3">
                             <h4 className="text-lg font-normal"> Semester Wise Toppers</h4>
 
@@ -889,15 +1075,11 @@ export const Dashboard = () => {
                         )}
 
                     </div> */}
-
-                    </div>
-                </div>
-
-
             </div>
-        </>
-
-    )
+          </div>
+        </div>
+      </>
+    );
 }
 
 export default Dashboard;

@@ -4,6 +4,7 @@ import Pagination from '@mui/material/Pagination';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import Loader from '../../../component/loader/Loader';
 import InboxOutlinedIcon from '@mui/icons-material/InboxOutlined';
+import { hasActionAccess } from "../../utils/permissions";
 
 const theme = createTheme({
   components: {
@@ -25,7 +26,7 @@ const theme = createTheme({
 });
 
 const LittleStepsEnquiry = () => {
-
+    const canView = hasActionAccess("/enquiry", "view");
   const [limit] = useState(10);
   const [page, setPage] = useState(1);  
   const [enquiry, setEnquiry] = useState([]);
@@ -54,7 +55,9 @@ const LittleStepsEnquiry = () => {
   }, [page]);
 
   const totalPages = Math.ceil(totalCount / limit);
-
+ if (!canView) {
+   return <div>You don't have permission to view enquiries.</div>;
+ }
   return (
     <div className='px-4 sm:px-5 pt-5 sm:pt-6 pb-[100px] bg-[#f6f7fb] min-h-full' style={{ fontFamily: '"Poppins", sans-serif' }}>
 

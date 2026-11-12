@@ -3,6 +3,7 @@ import Modal from "../../components/modal/Modal";
 import { getUser } from "../../api/Serviceapi";
 import formStyles from "../CourseDetails/courseForms.module.css";
 import styles from "./Placement.module.css";
+import { hasActionAccess } from "../utils/permissions";
 
 const EMPTY_FORM = {
   companyName: "",
@@ -15,6 +16,8 @@ const EMPTY_FORM = {
 const STATUS_OPTIONS = ["In Process", "Placed", "Rejected"];
 
 const PlacementModal = ({ open, onClose, onSave, placementData }) => {
+    const canAdd = hasActionAccess("/placement", "add");
+    const canEdit = hasActionAccess("/placement", "edit");
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -106,6 +109,9 @@ const PlacementModal = ({ open, onClose, onSave, placementData }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+      if (placementData ? !canEdit : !canAdd) {
+        return;
+      }
     const newErrors = validate();
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
@@ -139,7 +145,9 @@ const PlacementModal = ({ open, onClose, onSave, placementData }) => {
   return (
     <Modal open={open} title={title} onClose={onClose} width={620}>
       <form className={formStyles.form} onSubmit={handleSubmit} noValidate>
-        <div className={`${formStyles.group} ${errors.student ? formStyles.invalid : ""}`}>
+        <div
+          className={`${formStyles.group} ${errors.student ? formStyles.invalid : ""}`}
+        >
           <label htmlFor="studentSearch">
             Student<span className={formStyles.required}>*</span>
           </label>
@@ -152,7 +160,9 @@ const PlacementModal = ({ open, onClose, onSave, placementData }) => {
                 {(selectedStudent.courseName || selectedStudent.batchName) && (
                   <span className={styles.selectedStudentMeta}>
                     {selectedStudent.courseName || "No course"}
-                    {selectedStudent.batchName ? ` · ${selectedStudent.batchName}` : ""}
+                    {selectedStudent.batchName
+                      ? ` · ${selectedStudent.batchName}`
+                      : ""}
                   </span>
                 )}
               </div>
@@ -192,7 +202,9 @@ const PlacementModal = ({ open, onClose, onSave, placementData }) => {
                       <span>{s.studentId}</span>
                       <span className={styles.searchItemMeta}>
                         {s.courseDetails?.courseName || "No course"}
-                        {s.batchDetails?.batchName ? ` · ${s.batchDetails.batchName}` : ""}
+                        {s.batchDetails?.batchName
+                          ? ` · ${s.batchDetails.batchName}`
+                          : ""}
                       </span>
                     </button>
                   ))}
@@ -204,7 +216,9 @@ const PlacementModal = ({ open, onClose, onSave, placementData }) => {
         </div>
 
         <div className={formStyles.grid}>
-          <div className={`${formStyles.group} ${errors.companyName ? formStyles.invalid : ""}`}>
+          <div
+            className={`${formStyles.group} ${errors.companyName ? formStyles.invalid : ""}`}
+          >
             <label htmlFor="companyName">
               Company Name<span className={formStyles.required}>*</span>
             </label>
@@ -218,7 +232,9 @@ const PlacementModal = ({ open, onClose, onSave, placementData }) => {
             <p className={formStyles.error}>{errors.companyName}</p>
           </div>
 
-          <div className={`${formStyles.group} ${errors.role ? formStyles.invalid : ""}`}>
+          <div
+            className={`${formStyles.group} ${errors.role ? formStyles.invalid : ""}`}
+          >
             <label htmlFor="role">
               Role<span className={formStyles.required}>*</span>
             </label>
@@ -232,7 +248,9 @@ const PlacementModal = ({ open, onClose, onSave, placementData }) => {
             <p className={formStyles.error}>{errors.role}</p>
           </div>
 
-          <div className={`${formStyles.group} ${errors.package ? formStyles.invalid : ""}`}>
+          <div
+            className={`${formStyles.group} ${errors.package ? formStyles.invalid : ""}`}
+          >
             <label htmlFor="package">
               Package (LPA)<span className={formStyles.required}>*</span>
             </label>
@@ -247,7 +265,9 @@ const PlacementModal = ({ open, onClose, onSave, placementData }) => {
             <p className={formStyles.error}>{errors.package}</p>
           </div>
 
-          <div className={`${formStyles.group} ${errors.placementDate ? formStyles.invalid : ""}`}>
+          <div
+            className={`${formStyles.group} ${errors.placementDate ? formStyles.invalid : ""}`}
+          >
             <label htmlFor="placementDate">
               Placement Date<span className={formStyles.required}>*</span>
             </label>
@@ -262,7 +282,11 @@ const PlacementModal = ({ open, onClose, onSave, placementData }) => {
 
           <div className={formStyles.group}>
             <label htmlFor="status">Status</label>
-            <select id="status" value={form.status} onChange={handleChange("status")}>
+            <select
+              id="status"
+              value={form.status}
+              onChange={handleChange("status")}
+            >
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
                   {s}
@@ -281,7 +305,12 @@ const PlacementModal = ({ open, onClose, onSave, placementData }) => {
           >
             Cancel
           </button>
-          <button type="submit" className={formStyles.submitBtn} disabled={saving}>
+          
+          <button
+            type="submit"
+            className={formStyles.submitBtn}
+            disabled={saving || (placementData ? !canEdit : !canAdd)}
+          >
             {saving
               ? placementData
                 ? "Saving..."

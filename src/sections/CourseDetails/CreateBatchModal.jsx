@@ -3,7 +3,7 @@ import styles from "./CreateBatchModel.module.css";
 import { postCourseBatch } from "../../api/Serviceapi";
 import { updateCourseBatch } from "../../api/Serviceapi";
 import { toast } from "react-toastify";
-
+import { hasActionAccess } from "../utils/permissions";
 
 const CreateBatchModal = ({
   visible,
@@ -77,6 +77,10 @@ const CreateBatchModal = ({
   }, [batchData]);
 
   const [errors, setErrors] = useState({});
+  const canAdd = hasActionAccess("/batch", "add");
+  const canEdit = hasActionAccess("/batch", "edit");
+
+  const canSubmit = batchData ? canEdit : canAdd;
 
   if (!visible) return null;
 
@@ -150,6 +154,10 @@ const CreateBatchModal = ({
   };
 
   const handleSubmit = async () => {
+      if (!canSubmit || isLoading) {
+        return;
+      }
+
     const newErrors = validate();
     setErrors(newErrors);
 
@@ -256,129 +264,130 @@ const CreateBatchModal = ({
         </div>
 
         <div className={styles.scrollArea}>
-        <div className={styles.formWrapper}>
-          <div className={styles.rowSingle}>
-            <div className={styles.formGroup}>
-              <label>
-                Batch Name <span className={styles.required}>*</span>
-              </label>
-              <input
-                type="text"
-                name="batchName"
-                value={formData.batchName}
-                onChange={handleChange}
-                placeholder="Enter Batch Name"
-                className={errors.batchName ? styles.errorInput : ""}
-              />
-              {errors.batchName && (
-                <div className={styles.errorDiv}>{errors.batchName}</div>
-              )}
+          <div className={styles.formWrapper}>
+            <div className={styles.rowSingle}>
+              <div className={styles.formGroup}>
+                <label>
+                  Batch Name <span className={styles.required}>*</span>
+                </label>
+                <input
+                  type="text"
+                  name="batchName"
+                  value={formData.batchName}
+                  onChange={handleChange}
+                  placeholder="Enter Batch Name"
+                  className={errors.batchName ? styles.errorInput : ""}
+                  disabled={!canSubmit || isLoading}
+                />
+                {errors.batchName && (
+                  <div className={styles.errorDiv}>{errors.batchName}</div>
+                )}
+              </div>
+            </div>
+
+            <div className={styles.rowTwoGrid}>
+              <div className={styles.formGroup}>
+                <label>
+                  Start Date <span className={styles.required}>*</span>
+                </label>
+                <input
+                  type="date"
+                  name="startDate"
+                  value={formData.startDate}
+                  onChange={handleChange}
+                  className={errors.startDate ? styles.errorInput : ""}
+                />
+                {errors.startDate && (
+                  <div className={styles.errorDiv}>{errors.startDate}</div>
+                )}
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>
+                  End Date <span className={styles.required}>*</span>
+                </label>
+                <input
+                  type="date"
+                  name="endDate"
+                  value={formData.endDate}
+                  min={formData.startDate}
+                  onChange={handleChange}
+                  className={errors.endDate ? styles.errorInput : ""}
+                />
+                {errors.endDate && (
+                  <div className={styles.errorDiv}>{errors.endDate}</div>
+                )}
+              </div>
+            </div>
+
+            <div className={styles.rowTwoGrid}>
+              <div className={styles.formGroup}>
+                <label>
+                  Class Start Time <span className={styles.required}>*</span>
+                </label>
+                <input
+                  type="time"
+                  name="classStartIn"
+                  value={formData.classStartIn}
+                  onChange={handleChange}
+                  className={errors.classStartIn ? styles.errorInput : ""}
+                />
+                {errors.classStartIn && (
+                  <div className={styles.errorDiv}>{errors.classStartIn}</div>
+                )}
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>
+                  Class End Time <span className={styles.required}>*</span>
+                </label>
+                <input
+                  type="time"
+                  name="classEndIn"
+                  value={formData.classEndIn}
+                  onChange={handleChange}
+                  className={errors.classEndIn ? styles.errorInput : ""}
+                />
+                {errors.classEndIn && (
+                  <div className={styles.errorDiv}>{errors.classEndIn}</div>
+                )}
+              </div>
+            </div>
+
+            <div className={styles.rowTwoGrid}>
+              <div className={styles.formGroup}>
+                <label>
+                  Semester 1 Fee Date<span className={styles.required}>*</span>
+                </label>
+                <input
+                  type="date"
+                  name="sem1FeeDate"
+                  value={formData.sem1FeeDate}
+                  onChange={handleChange}
+                  className={errors.sem1FeeDate ? styles.errorInput : ""}
+                />
+                {errors.sem1FeeDate && (
+                  <div className={styles.errorDiv}>{errors.sem1FeeDate}</div>
+                )}
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>
+                  Semester 2 Fee Date<span className={styles.required}>*</span>
+                </label>
+                <input
+                  type="date"
+                  name="sem2FeeDate"
+                  value={formData.sem2FeeDate}
+                  onChange={handleChange}
+                  className={errors.sem2FeeDate ? styles.errorInput : ""}
+                />
+                {errors.sem2FeeDate && (
+                  <div className={styles.errorDiv}>{errors.sem2FeeDate}</div>
+                )}
+              </div>
             </div>
           </div>
-
-          <div className={styles.rowTwoGrid}>
-            <div className={styles.formGroup}>
-              <label>
-                Start Date <span className={styles.required}>*</span>
-              </label>
-              <input
-                type="date"
-                name="startDate"
-                value={formData.startDate}
-                onChange={handleChange}
-                className={errors.startDate ? styles.errorInput : ""}
-              />
-              {errors.startDate && (
-                <div className={styles.errorDiv}>{errors.startDate}</div>
-              )}
-            </div>
-
-            <div className={styles.formGroup}>
-              <label>
-                End Date <span className={styles.required}>*</span>
-              </label>
-              <input
-                type="date"
-                name="endDate"
-                value={formData.endDate}
-                min={formData.startDate}
-                onChange={handleChange}
-                className={errors.endDate ? styles.errorInput : ""}
-              />
-              {errors.endDate && (
-                <div className={styles.errorDiv}>{errors.endDate}</div>
-              )}
-            </div>
-          </div>
-
-          <div className={styles.rowTwoGrid}>
-            <div className={styles.formGroup}>
-              <label>
-                Class Start Time <span className={styles.required}>*</span>
-              </label>
-              <input
-                type="time"
-                name="classStartIn"
-                value={formData.classStartIn}
-                onChange={handleChange}
-                className={errors.classStartIn ? styles.errorInput : ""}
-              />
-              {errors.classStartIn && (
-                <div className={styles.errorDiv}>{errors.classStartIn}</div>
-              )}
-            </div>
-
-            <div className={styles.formGroup}>
-              <label>
-                Class End Time <span className={styles.required}>*</span>
-              </label>
-              <input
-                type="time"
-                name="classEndIn"
-                value={formData.classEndIn}
-                onChange={handleChange}
-                className={errors.classEndIn ? styles.errorInput : ""}
-              />
-              {errors.classEndIn && (
-                <div className={styles.errorDiv}>{errors.classEndIn}</div>
-              )}
-            </div>
-          </div>
-
-          <div className={styles.rowTwoGrid}>
-            <div className={styles.formGroup}>
-              <label>
-                Semester 1 Fee Date<span className={styles.required}>*</span>
-              </label>
-              <input
-                type="date"
-                name="sem1FeeDate"
-                value={formData.sem1FeeDate}
-                onChange={handleChange}
-                className={errors.sem1FeeDate ? styles.errorInput : ""}
-              />
-              {errors.sem1FeeDate && (
-                <div className={styles.errorDiv}>{errors.sem1FeeDate}</div>
-              )}
-            </div>
-
-            <div className={styles.formGroup}>
-              <label>
-                Semester 2 Fee Date<span className={styles.required}>*</span>
-              </label>
-              <input
-                type="date"
-                name="sem2FeeDate"
-                value={formData.sem2FeeDate}
-                onChange={handleChange}
-                className={errors.sem2FeeDate ? styles.errorInput : ""}
-              />
-              {errors.sem2FeeDate && (
-                <div className={styles.errorDiv}>{errors.sem2FeeDate}</div>
-              )}
-            </div>
-          </div>
-        </div>
         </div>
         <div className={styles.modalFooter}>
           <button
@@ -392,17 +401,20 @@ const CreateBatchModal = ({
           >
             Cancel
           </button>
-          {isLoading ? (
-            <button type="button" className={styles.submitBtn} disabled>
-              {batchData ? "Updating...." : "Creating..."}
-            </button>
-          ) : (
+          {canSubmit && (
             <button
               type="button"
               className={styles.submitBtn}
               onClick={handleSubmit}
+              disabled={isLoading}
             >
-              {batchData ? "Update" : "Create"}
+              {isLoading
+                ? batchData
+                  ? "Updating..."
+                  : "Creating..."
+                : batchData
+                  ? "Update"
+                  : "Create"}
             </button>
           )}
         </div>

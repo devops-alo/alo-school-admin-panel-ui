@@ -12,6 +12,7 @@ import {
   removeStudentDiscount,
   sendFeeReceiptMail,
 } from "../../api/Serviceapi";
+import { hasActionAccess } from "../utils/permissions";
 
 const emptyForm = { amount: "", date: "", mode: "Cash" };
 
@@ -31,6 +32,9 @@ const initials = (name = "") =>
   name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("") || "?";
 
 const FeeDetailModal = ({ open, student, onClose, onRequestFee, onPaymentSaved }) => {
+  const canAdd = hasActionAccess("/fees", "add");
+  const canEdit = hasActionAccess("/fees", "edit");
+  const canDelete = hasActionAccess("/fees", "delete");
   const [rows, setRows] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -261,25 +265,39 @@ const FeeDetailModal = ({ open, student, onClose, onRequestFee, onPaymentSaved }
   };
 
   return (
-    <div className={styles.overlay} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div
+      className={styles.overlay}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className={styles.content}>
         {/* fixed top block: never scrolls away */}
         <div className={styles.pinned}>
           <div className={styles.header}>
             <div className={styles.identity}>
-              <div className={styles.avatar}>{initials(student.userDetails?.name)}</div>
+              <div className={styles.avatar}>
+                {initials(student.userDetails?.name)}
+              </div>
               <div>
                 <p className={styles.name}>{student.userDetails?.name}</p>
                 <p className={styles.subInfo}>
-                  {student.userDetails?.studentId} · {student.userDetails?.mobileNo}
+                  {student.userDetails?.studentId} ·{" "}
+                  {student.userDetails?.mobileNo}
                 </p>
                 <p className={styles.subInfo}>
                   {student.courseDetails?.courseName}
-                  {student.batchDetails?.batchName ? ` · ${student.batchDetails.batchName}` : ""}
+                  {student.batchDetails?.batchName
+                    ? ` · ${student.batchDetails.batchName}`
+                    : ""}
                 </p>
               </div>
             </div>
-            <button className={styles.closeBtn} onClick={onClose} aria-label="Close">
+            <button
+              className={styles.closeBtn}
+              onClick={onClose}
+              aria-label="Close"
+            >
               <FontAwesomeIcon icon={faTimes} />
             </button>
           </div>
@@ -291,20 +309,28 @@ const FeeDetailModal = ({ open, student, onClose, onRequestFee, onPaymentSaved }
             </div>
             <div className={styles.summaryItem}>
               <p className={styles.summaryLabel}>Paid Amount</p>
-              <p className={`${styles.summaryValue} ${styles.paidText}`}>{formatAmount(paidAmount)}</p>
+              <p className={`${styles.summaryValue} ${styles.paidText}`}>
+                {formatAmount(paidAmount)}
+              </p>
             </div>
             <div className={styles.summaryItem}>
               <p className={styles.summaryLabel}>Pending Fees</p>
               <div className={styles.pendingValueRow}>
-                <p className={`${styles.summaryValue} ${pendingAmount === 0 ? styles.paidText : styles.pendingText}`}>
+                <p
+                  className={`${styles.summaryValue} ${pendingAmount === 0 ? styles.paidText : styles.pendingText}`}
+                >
                   {formatAmount(pendingAmount)}
                 </p>
-                {pendingAmount > 0 && remindRow && (
+                {canEdit && pendingAmount > 0 && remindRow && (
                   <button
                     type="button"
                     className={styles.summaryRemindBtn}
                     disabled={reminderSentToday}
-                    title={reminderSentToday ? "Reminder already sent today" : "Send pending fee reminder"}
+                    title={
+                      reminderSentToday
+                        ? "Reminder already sent today"
+                        : "Send pending fee reminder"
+                    }
                     onClick={() => {
                       if (reminderSentToday) return;
                       onRequestFee(remindRow._id);
@@ -320,7 +346,12 @@ const FeeDetailModal = ({ open, student, onClose, onRequestFee, onPaymentSaved }
           <div className={styles.discountRow}>
             {editingDiscount ? (
               <>
-                <label className={styles.discountLabel} htmlFor="discountAmount">Discount</label>
+                <label
+                  className={styles.discountLabel}
+                  htmlFor="discountAmount"
+                >
+                  Discount
+                </label>
                 <input
                   id="discountAmount"
                   className={styles.discountInput}
@@ -332,26 +363,42 @@ const FeeDetailModal = ({ open, student, onClose, onRequestFee, onPaymentSaved }
                   onChange={(e) => setDiscountForm(e.target.value)}
                   autoFocus
                 />
-                <button className={styles.editBtn} onClick={saveDiscount} disabled={discountSaving || !hasSem2}>
-                  {discountSaving ? "Saving..." : "Save"}
-                </button>
-                <button className={styles.requestLink} style={{ color: "#6b7280" }} onClick={cancelEditDiscount}>
+                {canEdit && (
+                  <button
+                    className={styles.editBtn}
+                    onClick={saveDiscount}
+                    disabled={discountSaving || !hasSem2}
+                  >
+                    {discountSaving ? "Saving..." : "Save"}
+                  </button>
+                )}
+                <button
+                  className={styles.requestLink}
+                  style={{ color: "#6b7280" }}
+                  onClick={cancelEditDiscount}
+                >
                   Cancel
                 </button>
-                <span className={styles.discountSticker}>Applied to Semester 2 pending only</span>
+                <span className={styles.discountSticker}>
+                  Applied to Semester 2 pending only
+                </span>
               </>
             ) : discountAmount > 0 ? (
               confirmingRemoveDiscount ? (
                 <>
-                  <span className={styles.discountLabel}>Remove this discount?</span>
-                  <button
-                    className={styles.requestLink}
-                    style={{ color: "#d92d20" }}
-                    onClick={removeDiscount}
-                    disabled={discountSaving}
-                  >
-                    {discountSaving ? "Removing..." : "Yes, remove"}
-                  </button>
+                  <span className={styles.discountLabel}>
+                    Remove this discount?
+                  </span>
+                  {canDelete && (
+                    <button
+                      className={styles.requestLink}
+                      style={{ color: "#d92d20" }}
+                      onClick={removeDiscount}
+                      disabled={discountSaving}
+                    >
+                      {discountSaving ? "Removing..." : "Yes, remove"}
+                    </button>
+                  )}
                   <button
                     className={styles.requestLink}
                     style={{ color: "#6b7280" }}
@@ -364,38 +411,58 @@ const FeeDetailModal = ({ open, student, onClose, onRequestFee, onPaymentSaved }
               ) : (
                 <>
                   <span className={styles.discountLabel}>
-                    Discount applied: <strong>{formatAmount(discountAmount)}</strong>
-                    <span className={styles.discountSticker}> (deducted from Semester 2 pending)</span>
+                    Discount applied:{" "}
+                    <strong>{formatAmount(discountAmount)}</strong>
+                    <span className={styles.discountSticker}>
+                      {" "}
+                      (deducted from Semester 2 pending)
+                    </span>
                   </span>
-                  <button
-                    className={styles.editBtn}
-                    onClick={startEditDiscount}
-                    disabled={!hasSem2}
-                    title={!hasSem2 ? "Discount can only be applied when Semester 2 is available" : undefined}
-                  >
-                    <FaEdit /> Edit
-                  </button>
-                  <button
-                    className={styles.requestLink}
-                    style={{ color: "#d92d20" }}
-                    onClick={() => setConfirmingRemoveDiscount(true)}
-                  >
-                    Remove
-                  </button>
+                  {canEdit && (
+                    <button
+                      className={styles.editBtn}
+                      onClick={startEditDiscount}
+                      disabled={!hasSem2}
+                      title={
+                        !hasSem2
+                          ? "Discount can only be applied when Semester 2 is available"
+                          : undefined
+                      }
+                    >
+                      <FaEdit /> Edit
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      className={styles.requestLink}
+                      style={{ color: "#d92d20" }}
+                      onClick={() => setConfirmingRemoveDiscount(true)}
+                    >
+                      Remove
+                    </button>
+                  )}
                 </>
               )
             ) : (
-              <button
-                className={styles.editBtn}
-                onClick={startEditDiscount}
-                disabled={!hasSem2}
-                title={!hasSem2 ? "Discount can only be applied when Semester 2 is available" : undefined}
-              >
-                + Add Discount
-              </button>
+              canAdd && (
+                <button
+                  className={styles.editBtn}
+                  onClick={startEditDiscount}
+                  disabled={!hasSem2}
+                  title={
+                    !hasSem2
+                      ? "Discount can only be applied when Semester 2 is available"
+                      : undefined
+                  }
+                >
+                  + Add Discount
+                </button>
+              )
             )}
             {!hasSem2 && discountAmount === 0 && !editingDiscount && (
-              <span className={styles.discountSticker}>Semester 2 is not available for this student</span>
+              <span className={styles.discountSticker}>
+                Semester 2 is not available for this student
+              </span>
             )}
           </div>
         </div>
@@ -420,26 +487,42 @@ const FeeDetailModal = ({ open, student, onClose, onRequestFee, onPaymentSaved }
                 {rows.length > 0 ? (
                   rows.map((row) => (
                     <React.Fragment key={row._id}>
-                      <tr className={editingId === row._id ? styles.rowActive : ""}>
-                        <td><span className={styles.semBadge}>{row.noOfsem}</span></td>
+                      <tr
+                        className={
+                          editingId === row._id ? styles.rowActive : ""
+                        }
+                      >
+                        <td>
+                          <span className={styles.semBadge}>{row.noOfsem}</span>
+                        </td>
                         <td>{formatAmount(row.semFee)}</td>
                         <td>{formatAmount(row.paidAmount)}</td>
                         <td className={styles.paidText}>
-                          {row.discountCredited ? formatAmount(row.discountCredited) : "-"}
+                          {row.discountCredited
+                            ? formatAmount(row.discountCredited)
+                            : "-"}
                         </td>
                         <td>
                           {row.pendingAmount === 0 ? (
                             <span className={styles.pill}>Paid</span>
                           ) : (
-                            <span className={styles.pillPending}>{formatAmount(row.pendingAmount)}</span>
+                            <span className={styles.pillPending}>
+                              {formatAmount(row.pendingAmount)}
+                            </span>
                           )}
                         </td>
-                        <td>{row.paymentDate ? row.paymentDate.split("T")[0] : "-"}</td>
+                        <td>
+                          {row.paymentDate
+                            ? row.paymentDate.split("T")[0]
+                            : "-"}
+                        </td>
                         <td>
                           <div className={styles.actionCell}>
                             {row.pendingAmount === 0 ? (
-                              <span className={styles.completed}>Completed</span>
-                            ) : (
+                              <span className={styles.completed}>
+                                Completed
+                              </span>
+                            ) : canEdit ? (
                               <button
                                 type="button"
                                 className={styles.editIconBtn}
@@ -449,7 +532,7 @@ const FeeDetailModal = ({ open, student, onClose, onRequestFee, onPaymentSaved }
                               >
                                 <FaEdit />
                               </button>
-                            )}
+                            ) : null}
                           </div>
                         </td>
                       </tr>
@@ -463,7 +546,12 @@ const FeeDetailModal = ({ open, student, onClose, onRequestFee, onPaymentSaved }
                                   type="number"
                                   placeholder={`Max ${row.pendingAmount}`}
                                   value={form.amount}
-                                  onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                                  onChange={(e) =>
+                                    setForm((f) => ({
+                                      ...f,
+                                      amount: e.target.value,
+                                    }))
+                                  }
                                 />
                               </div>
                               <div className={styles.editField}>
@@ -472,28 +560,44 @@ const FeeDetailModal = ({ open, student, onClose, onRequestFee, onPaymentSaved }
                                   type="date"
                                   max={new Date().toLocaleDateString("en-CA")}
                                   value={form.date}
-                                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                                  onChange={(e) =>
+                                    setForm((f) => ({
+                                      ...f,
+                                      date: e.target.value,
+                                    }))
+                                  }
                                 />
                               </div>
                               <div className={styles.editField}>
                                 <label>Mode</label>
                                 <select
                                   value={form.mode}
-                                  onChange={(e) => setForm((f) => ({ ...f, mode: e.target.value }))}
+                                  onChange={(e) =>
+                                    setForm((f) => ({
+                                      ...f,
+                                      mode: e.target.value,
+                                    }))
+                                  }
                                 >
                                   <option value="Cash">Cash</option>
                                   <option value="Online">Online</option>
                                 </select>
                               </div>
                               <div className={styles.editActions}>
+                                {canEdit && (
+                                  <button
+                                    className={styles.saveBtn}
+                                    disabled={saving}
+                                    onClick={() => handleSave(row)}
+                                  >
+                                    {saving ? "Saving..." : "Save Payment"}
+                                  </button>
+                                )}
                                 <button
-                                  className={styles.saveBtn}
+                                  className={styles.cancelBtn}
                                   disabled={saving}
-                                  onClick={() => handleSave(row)}
+                                  onClick={cancelEdit}
                                 >
-                                  {saving ? "Saving..." : "Save Payment"}
-                                </button>
-                                <button className={styles.cancelBtn} disabled={saving} onClick={cancelEdit}>
                                   Cancel
                                 </button>
                               </div>
@@ -505,7 +609,9 @@ const FeeDetailModal = ({ open, student, onClose, onRequestFee, onPaymentSaved }
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="7" className={styles.noData}>No semester records found</td>
+                    <td colSpan="7" className={styles.noData}>
+                      No semester records found
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -514,7 +620,10 @@ const FeeDetailModal = ({ open, student, onClose, onRequestFee, onPaymentSaved }
 
           <p className={styles.sectionTitle}>
             <FaRegClock style={{ marginRight: 6 }} />
-            Payment History {history.length > 0 && <span className={styles.countBadge}>{history.length}</span>}
+            Payment History{" "}
+            {history.length > 0 && (
+              <span className={styles.countBadge}>{history.length}</span>
+            )}
           </p>
           <div className={styles.historyBox}>
             {historyLoading ? (
@@ -533,31 +642,50 @@ const FeeDetailModal = ({ open, student, onClose, onRequestFee, onPaymentSaved }
                 <tbody>
                   {history.map((h) => (
                     <tr key={h._id}>
-                      <td>{h.paymentDate ? new Date(h.paymentDate).toLocaleDateString("en-IN") : "-"}</td>
+                      <td>
+                        {h.paymentDate
+                          ? new Date(h.paymentDate).toLocaleDateString("en-IN")
+                          : "-"}
+                      </td>
                       <td>{h.noOfsem}</td>
-                      <td className={styles.paidText}>{formatAmount(h.paidAmount)}</td>
+                      <td className={styles.paidText}>
+                        {formatAmount(h.paidAmount)}
+                      </td>
                       <td>{h.modeOfPayment || "-"}</td>
                       <td>
                         <div className={styles.collector}>
-                          <span className={styles.collectorAvatar}>{initials(h.collectedBy?.name)}</span>
-                          <span className={styles.collectorName}>{h.collectedBy?.name || "-"}</span>
+                          <span className={styles.collectorAvatar}>
+                            {initials(h.collectedBy?.name)}
+                          </span>
+                          <span className={styles.collectorName}>
+                            {h.collectedBy?.name || "-"}
+                          </span>
                           {h.receiptMailStatus === "Sent" && (
-                            <span className={styles.receiptSentBadge} title={h.receiptMailSentAt ? `Notified ${new Date(h.receiptMailSentAt).toLocaleString("en-IN")}` : "Receipt emailed"}>
+                            <span
+                              className={styles.receiptSentBadge}
+                              title={
+                                h.receiptMailSentAt
+                                  ? `Notified ${new Date(h.receiptMailSentAt).toLocaleString("en-IN")}`
+                                  : "Receipt emailed"
+                              }
+                            >
                               Notified
                             </span>
                           )}
-                          {h.type !== "deleted" && Number(h.paidAmount) > 0 && (
-                            <button
-                              type="button"
-                              className={styles.receiptMailBtn}
-                              aria-label="Send fee receipt email"
-                              title="Send fee receipt email"
-                              disabled={sendingReceiptId === h._id}
-                              onClick={() => sendReceiptForPayment(h)}
-                            >
-                              <FaEnvelope />
-                            </button>
-                          )}
+                          {canEdit &&
+                            h.type !== "deleted" &&
+                            Number(h.paidAmount) > 0 && (
+                              <button
+                                type="button"
+                                className={styles.receiptMailBtn}
+                                aria-label="Send fee receipt email"
+                                title="Send fee receipt email"
+                                disabled={sendingReceiptId === h._id}
+                                onClick={() => sendReceiptForPayment(h)}
+                              >
+                                <FaEnvelope />
+                              </button>
+                            )}
                         </div>
                       </td>
                     </tr>

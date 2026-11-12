@@ -6,6 +6,7 @@ import { createTheme, ThemeProvider } from '@mui/material/styles';
 import Loader from '../../../component/loader/Loader';
 import InboxOutlinedIcon from '@mui/icons-material/InboxOutlined';
 import '../../../App.css'
+import { hasActionAccess } from "../../utils/permissions";
 
 const theme = createTheme({
     components: {
@@ -29,7 +30,7 @@ const theme = createTheme({
     },
 });
 const Enquiry = () => {
-
+    const canView = hasActionAccess("/enquiry", "view");
     const { TabPane } = Tabs;
     const [limit, setlimit] = useState(10);
     const [totaluser, settotal] = useState(0);
@@ -68,8 +69,14 @@ const Enquiry = () => {
             setoffset(value);
         }
     };
+    if (!canView) {
+      return <div>You don't have permission to view enquiries.</div>;
+    }
+    
     return (
+        
         <>
+        
             <div className='px-4 sm:px-5 pt-5 sm:pt-6 pb-[100px] bg-[#f6f7fb] min-h-full' style={{ fontFamily: '"Poppins", sans-serif' }}>
 
                 <h4 className='text-[22px] sm:text-[26px] font-semibold text-[#123d84]'>Enquiry</h4>

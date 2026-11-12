@@ -44,6 +44,9 @@ import {
   setPrimaryBatch,
   updateCourseBatch,
 } from './api/Serviceapi';
+import SubadminManagement from './sections/SubAdminManagement/SubadminManagement';
+import Settings from './sections/Settings/Settings';
+import DailyQuotes from './sections/DailyQuotes/DailyQuotes';
 
 // The course module returns _id; normalize to `id` so the batch pages
 // (which expect `course.id`) keep working against real course data.
@@ -96,6 +99,30 @@ const normalizeBatch = (b) => ({
 });
 
 function App() {
+
+  const permissionRoutes = [
+    { path: "/dashboard", label: "Dashboard" },
+    { path: "/students", label: "Students" },
+    { path: "/Fees", label: "Fees" },
+    { path: "/attendence", label: "Attendance" },
+    { path: "/academic", label: "Academic" },
+    { path: "/daily-quotes", label: "Daily Quotes" },
+    { path: "/tasks", label: "Tasks" },
+    { path: "/complaint", label: "Complaint" },
+    { path: "/harassment", label: "Harassment" },
+    { path: "/events", label: "Student Panel Events" },
+    { path: "/enquiry", label: "Enquiry" },
+    { path: "/application", label: "Application" },
+    { path: "/placement", label: "Placement" },
+    { path: "/workshop", label: "Workshop" },
+    { path: "/subadmin-management", label: "Subadmin Management" },
+    { path: "/settings", label: "Settings" },
+    { path: "/course", label: "Course" },
+    { path: "/batch", label: "Batch" },
+    { path: "/alumniimages", label: "Alumni Images" },
+    { path: "/studentwork", label: "Student Work" },
+    { path: "/addevent", label: "Website Event Images" },
+  ];
   const location = useLocation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -105,7 +132,8 @@ function App() {
   const [batchesLoading, setBatchesLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
+    const token =
+      sessionStorage.getItem("authToken") || localStorage.getItem("authToken");
     if (token) {
       setIsAuthenticated(true);
     }
@@ -284,6 +312,10 @@ function App() {
             <Route index element={<SemesterExam />} />
           </Route>
 
+          <Route path="/daily-quotes" element={<Header />}>
+            <Route index element={<DailyQuotes />} />
+          </Route>
+
           <Route path="/tasks" element={<Header />}>
             <Route index element={<TaskManagement />} />
             <Route path="settings" element={<TaskSettings />} />
@@ -291,11 +323,11 @@ function App() {
           </Route>
 
           <Route path="/complaint" element={<Header />}>
-            <Route index element={<Complaint/>} />
+            <Route index element={<Complaint />} />
           </Route>
 
           <Route path="/harassment" element={<Header />}>
-            <Route index element={<Harassement/>} />
+            <Route index element={<Harassement />} />
           </Route>
 
           <Route path="/events" element={<Header />}>
@@ -322,6 +354,19 @@ function App() {
 
           <Route path="/workshop" element={<Header />}>
             <Route index element={<Workshop />} />
+          </Route>
+
+          <Route path="/subadmin-management" element={<Header />}>
+            <Route
+              index
+              element={
+                <SubadminManagement permissionRoutes={permissionRoutes} />
+              }
+            />
+          </Route>
+
+          <Route path="/settings" element={<Header />}>
+            <Route index element={<Settings />} />
           </Route>
 
           <Route

@@ -13,6 +13,7 @@ import StarIcon from "@mui/icons-material/Star";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import profile from "../../assets/dashboardimgs/profile.png";
 import Import from "../../assets/dashboardimgs/Import.png";
+import { hasActionAccess } from "../utils/permissions";
 import { Form, useParams } from "react-router-dom";
 import {
   attendancestudentrate,
@@ -57,6 +58,10 @@ const Studentdetails = () => {
   const [status, setStatus] = useState(true);
   const [termList, setTermList] = useState([]);
   const [subjectLoading, setSubjectLoading] = useState(false);
+  const canView = hasActionAccess("/students/studentview", "view");
+  const canEdit = hasActionAccess("/students/studentview", "edit");
+  const canAdd = hasActionAccess("/students/studentview", "add");
+  const canDelete = hasActionAccess("/students/studentview", "delete");
 
   const [selectedRange, setSelectedRange] = useState([
     {
@@ -206,6 +211,7 @@ const Studentdetails = () => {
 
 
   const handleSavePerformance = async () => {
+    if (editMode ? !canEdit : !canAdd) return;
     setFormError("");
 
     if (!Academic) return setFormError("Please select Term / Sem");
@@ -434,6 +440,7 @@ const Studentdetails = () => {
   const [statusUpdating, setStatusUpdating] = useState(false);
 
   const onChange = async (checked) => {
+      if (!canEdit) return;
     const newStatus = checked ? "active" : "inactive";
     setStatusUpdating(true);
     try {
@@ -466,6 +473,7 @@ const Studentdetails = () => {
   const [discription, setdiscription] = useState("");
   const [error, setError] = useState("");
   const createabsent = async () => {
+      if (!canEdit) return;
     if (!discription.trim()) {
       setError("Description is required");
       return;
@@ -581,7 +589,7 @@ const Studentdetails = () => {
 
 
   const confirmDeleteTermSem = async () => {
-    if (!deleteId) return;
+     if (!canDelete || !deleteId) return;
 
     setDeleteLoading(true);
     try {
@@ -617,6 +625,9 @@ const Studentdetails = () => {
      setFeeLoading(false);
    }
  }
+ if (!canView) {
+   return <div>You don't have permission to view student details.</div>;
+ }
   return (
     <>
       <ToastContainer />
@@ -624,7 +635,12 @@ const Studentdetails = () => {
         <div className="flex gap-[10px] items-center pb-[16px]">
           <div>
             <IoMdArrowRoundBack
-              style={{ cursor: "pointer", fontSize: "20px", marginTop: "2px", color: "#123d84" }}
+              style={{
+                cursor: "pointer",
+                fontSize: "20px",
+                marginTop: "2px",
+                color: "#123d84",
+              }}
               onClick={() => window.history.back()}
             />
           </div>
@@ -778,7 +794,9 @@ const Studentdetails = () => {
               </div>
               <div>
                 <div className="bg-white border border-[#eef0f5] px-[20px] py-[10px] rounded-[12px] ">
-                  <h4 className="text-[16px] font-semibold text-[#123d84]">Fee Details</h4>
+                  <h4 className="text-[16px] font-semibold text-[#123d84]">
+                    Fee Details
+                  </h4>
                   <div className="grid grid-cols-4 text-[12px] bg-[#f8fafd] border border-[#eef0f5] rounded-[12px] px-[20px] py-[10px] my-5 ">
                     <div>
                       <div className="text-[#6b7280]">Total Fees</div>
@@ -799,7 +817,9 @@ const Studentdetails = () => {
                   </div>
                 </div>
                 <div className="bg-white border border-[#eef0f5] px-[20px] py-[10px] rounded-[12px] my-3">
-                  <h4 className="text-[16px] font-semibold text-[#123d84]">Documents</h4>
+                  <h4 className="text-[16px] font-semibold text-[#123d84]">
+                    Documents
+                  </h4>
                   <div className="text-[12px] bg-[#f8fafd] border border-[#eef0f5] rounded-[12px] px-[20px] py-[10px] my-2 ">
                     <div className="flex justify-between items-center">
                       <h4>Aadhar card</h4>
@@ -814,7 +834,9 @@ const Studentdetails = () => {
                   </div>
                 </div>
                 <div className="bg-white border border-[#eef0f5] px-[20px] py-[10px] rounded-[12px] my-3">
-                  <h4 className="text-[16px] font-semibold text-[#123d84]">Personal Details</h4>
+                  <h4 className="text-[16px] font-semibold text-[#123d84]">
+                    Personal Details
+                  </h4>
 
                   <div className="text-[14px] font-normal my-2">
                     <div className="flex justify-around items-center my-1">
@@ -871,34 +893,38 @@ const Studentdetails = () => {
                       )}
                     </h2>
                     <div className="flex items-center gap-3 pb-[10px] flex-wrap">
-                      <button
-                        className={styles.absent}
-                        onClick={() => setAbsentModel(true)}
-                      >
-                        <EventBusyOutlinedIcon sx={{ fontSize: "15px" }} />
-                        Make Absent
-                      </button>
-                      <button
-                        className={styles.addTermBtn}
-                        onClick={() => {
-                          setTimeout(fetchSubjects, 0); // ensure modal + user loaded
-
-                          setEditMode(false);
-                          setAcademic("");
-                          // setSem("");
-                          setTermModal(true);
-                        }}
-                      >
-                        <AddOutlinedIcon sx={{ fontSize: "16px" }} />
-                        Add Term / Sem Detail
-                      </button>
-                      <button
-                        onClick={() => setIsOpen(true)}
-                        className={styles.editBtn}
-                      >
-                        <EditOutlinedIcon sx={{ fontSize: "15px" }} />
-                        Edit
-                      </button>
+                      {canEdit && (
+                        <button
+                          className={styles.absent}
+                          onClick={() => setAbsentModel(true)}
+                        >
+                          <EventBusyOutlinedIcon sx={{ fontSize: "15px" }} />
+                          Make Absent
+                        </button>
+                      )}
+                      {canAdd && (
+                        <button
+                          className={styles.addTermBtn}
+                          onClick={() => {
+                            setTimeout(fetchSubjects, 0);
+                            setEditMode(false);
+                            setAcademic("");
+                            setTermModal(true);
+                          }}
+                        >
+                          <AddOutlinedIcon sx={{ fontSize: "16px" }} />
+                          Add Term / Sem Detail
+                        </button>
+                      )}
+                      {canEdit && (
+                        <button
+                          onClick={() => setIsOpen(true)}
+                          className={styles.editBtn}
+                        >
+                          <EditOutlinedIcon sx={{ fontSize: "15px" }} />
+                          Edit
+                        </button>
+                      )}
                       <div className={styles.statusPill}>
                         <span
                           className={
@@ -914,7 +940,7 @@ const Studentdetails = () => {
                           onChange={onChange}
                           size="small"
                           loading={statusUpdating}
-                          disabled={statusUpdating}
+                          disabled={!canEdit || statusUpdating}
                         />
                       </div>
                     </div>
@@ -926,7 +952,9 @@ const Studentdetails = () => {
                       <p className="font-[500]">{user?.studentId}</p>
                     </div>
                     <div>
-                      <div className="text-[#6b7280] text-[12px]">Register Number</div>
+                      <div className="text-[#6b7280] text-[12px]">
+                        Register Number
+                      </div>
                       <p className="font-[500]">{user?.ID || "-"}</p>
                     </div>
                     <div>
@@ -980,7 +1008,10 @@ const Studentdetails = () => {
                 <p className="text-sm text-gray-500">Loading records...</p>
               ) : termList.length > 0 ? (
                 termList.map((p) => (
-                  <div key={p._id} className="bg-[#f8fafd] border border-[#eef0f5] p-3 rounded-[10px] mb-3">
+                  <div
+                    key={p._id}
+                    className="bg-[#f8fafd] border border-[#eef0f5] p-3 rounded-[10px] mb-3"
+                  >
                     {/* Header */}
                     <div className="flex justify-between items-center mb-2">
                       <div>
@@ -993,17 +1024,21 @@ const Studentdetails = () => {
                       </div>
 
                       <div className="flex gap-3 items-center">
-                        <EditOutlinedIcon
-                          sx={{ cursor: "pointer", fontSize: 18 }}
-                          onClick={() => openEditTermSem(p)}
-                        />
+                        {canEdit && (
+                          <EditOutlinedIcon
+                            sx={{ cursor: "pointer", fontSize: 18 }}
+                            onClick={() => openEditTermSem(p)}
+                          />
+                        )}
 
-                        <span
-                          className="text-red-600 text-sm cursor-pointer"
-                          onClick={() => setDeleteId(p._id)}
-                        >
-                          Delete
-                        </span>
+                        {canDelete && (
+                          <span
+                            className="text-red-600 text-sm cursor-pointer"
+                            onClick={() => setDeleteId(p._id)}
+                          >
+                            Delete
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -1042,7 +1077,9 @@ const Studentdetails = () => {
                 ))
               ) : (
                 <div className="flex flex-col items-center justify-center gap-2 py-10 bg-[#f8fafd] border border-dashed border-[#e5e7eb] rounded-[12px]">
-                  <MenuBookOutlinedIcon sx={{ fontSize: 28, color: "#c2c8d4" }} />
+                  <MenuBookOutlinedIcon
+                    sx={{ fontSize: 28, color: "#c2c8d4" }}
+                  />
                   <p className="text-sm text-gray-400">No Term / Sem Records</p>
                 </div>
               )}
@@ -1079,7 +1116,9 @@ const Studentdetails = () => {
                 {totalcount && (
                   <div className="grid grid-cols-2 lg:grid-cols-3 md:grid-cols-2 gap-3 mt-5">
                     <div className="bg-[#fdecec] border border-[#fbdada] rounded-[12px] px-[18px] py-[14px]">
-                      <EventBusyOutlinedIcon sx={{ fontSize: 20, color: "#d92d20" }} />
+                      <EventBusyOutlinedIcon
+                        sx={{ fontSize: 20, color: "#d92d20" }}
+                      />
                       <p className="text-[#d92d20] text-[11px] mt-1">
                         Absents this month
                       </p>
@@ -1088,7 +1127,9 @@ const Studentdetails = () => {
                       </p>
                     </div>
                     <div className="bg-[#fdecec] border border-[#fbdada] rounded-[12px] px-[18px] py-[14px]">
-                      <EventBusyOutlinedIcon sx={{ fontSize: 20, color: "#d92d20" }} />
+                      <EventBusyOutlinedIcon
+                        sx={{ fontSize: 20, color: "#d92d20" }}
+                      />
                       <p className="text-[#d92d20] text-[11px] mt-1">
                         Absents last month
                       </p>
@@ -1097,7 +1138,9 @@ const Studentdetails = () => {
                       </p>
                     </div>
                     <div className="bg-[#e9f7ef] border border-[#d3f0de] rounded-[12px] px-[18px] py-[14px]">
-                      <TrendingUpOutlinedIcon sx={{ fontSize: 20, color: "#12805c" }} />
+                      <TrendingUpOutlinedIcon
+                        sx={{ fontSize: 20, color: "#12805c" }}
+                      />
                       <p className="text-[#12805c] text-[11px] mt-1">
                         Attendance Rate
                       </p>
@@ -1192,7 +1235,9 @@ const Studentdetails = () => {
               </div>
               <div>
                 <div className="bg-white border border-[#eef0f5] px-[20px] py-[10px] rounded-[12px] ">
-                  <h4 className="text-[16px] font-semibold text-[#123d84]">Fee Details</h4>
+                  <h4 className="text-[16px] font-semibold text-[#123d84]">
+                    Fee Details
+                  </h4>
                   <div className="bg-[#f8fafd] border border-[#eef0f5] rounded-[12px] px-[20px] py-[15px] my-5">
                     <div className="grid grid-cols-5 text-[13px] font-semibold text-[#123d84] border-b border-[#f0f1f5] pb-2">
                       <div>Semester</div>
@@ -1211,7 +1256,9 @@ const Studentdetails = () => {
                         <div className="text-center">₹{item.semFee}</div>
                         <div className="text-center">₹{item.paidAmount}</div>
                         <div className="text-center text-[#12805c]">
-                          {item.discountCredited ? `₹${item.discountCredited}` : "-"}
+                          {item.discountCredited
+                            ? `₹${item.discountCredited}`
+                            : "-"}
                         </div>
                         <div className="text-center">₹{item.pendingAmount}</div>
                       </div>
@@ -1253,7 +1300,9 @@ const Studentdetails = () => {
                   </div>
                 </div>
                 <div className="bg-white border border-[#eef0f5] px-[20px] py-[10px] rounded-[12px] my-3">
-                  <h4 className="text-[16px] font-semibold text-[#123d84]">Documents</h4>
+                  <h4 className="text-[16px] font-semibold text-[#123d84]">
+                    Documents
+                  </h4>
                   <div className="text-[12px] bg-[#f8fafd] border border-[#eef0f5] rounded-[12px] px-[20px] py-[10px] my-2 ">
                     <div className="flex justify-between items-center">
                       <h4>Aadhar card</h4>
@@ -1278,7 +1327,9 @@ const Studentdetails = () => {
                   </div>
                 </div>
                 <div className="bg-white border border-[#eef0f5] px-[20px] py-[10px] rounded-[12px] my-3">
-                  <h4 className="text-[16px] font-semibold text-[#123d84]">Personal Details</h4>
+                  <h4 className="text-[16px] font-semibold text-[#123d84]">
+                    Personal Details
+                  </h4>
 
                   <div className="text-[14px] font-normal my-2">
                     <div className="flex justify-around items-center my-1">
@@ -1497,7 +1548,9 @@ const Studentdetails = () => {
                 <label
                   key={option.value}
                   className={`flex items-center gap-1.5 text-[13.5px] text-[#1f2937] ${
-                    editMode ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                    editMode
+                      ? "cursor-not-allowed opacity-60"
+                      : "cursor-pointer"
                   }`}
                 >
                   <input
@@ -1505,7 +1558,9 @@ const Studentdetails = () => {
                     name="term-sem-semester"
                     checked={sem === option.value}
                     disabled={editMode}
-                    onChange={() => handleSemesterChange({ target: { value: option.value } })}
+                    onChange={() =>
+                      handleSemesterChange({ target: { value: option.value } })
+                    }
                     className="accent-[#123d84] cursor-pointer"
                   />
                   {option.label}
@@ -1526,7 +1581,8 @@ const Studentdetails = () => {
               onChange={(e) => setAcademic(e.target.value)}
               disabled={editMode || allAcademicsUsed}
               style={{
-                cursor: editMode || allAcademicsUsed ? "not-allowed" : "pointer",
+                cursor:
+                  editMode || allAcademicsUsed ? "not-allowed" : "pointer",
                 // backgroundColor: !editMode || allAcademicsUsed ? "#f3f4f6" : "white",
               }}
             >
@@ -1534,14 +1590,18 @@ const Studentdetails = () => {
 
               <option
                 value="Term1"
-                disabled={!editMode && usedAcademicsForSemester.includes("Term1")}
+                disabled={
+                  !editMode && usedAcademicsForSemester.includes("Term1")
+                }
               >
                 Term 1
               </option>
 
               <option
                 value="Term2"
-                disabled={!editMode && usedAcademicsForSemester.includes("Term2")}
+                disabled={
+                  !editMode && usedAcademicsForSemester.includes("Term2")
+                }
               >
                 Term 2
               </option>
@@ -1585,7 +1645,8 @@ const Studentdetails = () => {
                     <StarIcon sx={{ fontSize: 16 }} /> Marks
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <UploadFileOutlinedIcon sx={{ fontSize: 16 }} /> Revaluation (PDF)
+                    <UploadFileOutlinedIcon sx={{ fontSize: 16 }} /> Revaluation
+                    (PDF)
                   </span>
                 </div>
 
@@ -1623,7 +1684,10 @@ const Studentdetails = () => {
                           // Reject any keystroke that would push the value past
                           // this subject's total marks, instead of only
                           // catching it at save time.
-                          if (/^\d*$/.test(value) && (value === "" || Number(value) <= maxMarks)) {
+                          if (
+                            /^\d*$/.test(value) &&
+                            (value === "" || Number(value) <= maxMarks)
+                          ) {
                             handleMarkChange(index, value);
                             return;
                           }
@@ -1693,54 +1757,60 @@ const Studentdetails = () => {
 
         {/* ================= Footer (natural size, never shrinks) ================= */}
         <div className="flex-shrink-0 px-5 py-4 border-t border-[#f0f1f5]">
-          {formError && <p className="text-[#d92d20] text-xs mb-2.5">{formError}</p>}
+          {formError && (
+            <p className="text-[#d92d20] text-xs mb-2.5">{formError}</p>
+          )}
 
           <div className="flex items-center gap-3 mb-3 px-3.5 py-3 rounded-[10px] bg-[#f6f7fb]">
             <span className="flex items-center justify-center w-9 h-9 rounded-full bg-[#123d84] text-white flex-shrink-0">
               <BarChartIcon sx={{ fontSize: 18 }} />
             </span>
             <div className="text-[13px] text-[#374151]">
-              Total: <span className="font-bold text-[#123d84]">{totalMarks} / {maxMarksSum}</span>
-              &nbsp;|&nbsp; Average: <span className="font-bold text-[#123d84]">{avgMarks}%</span>
+              Total:{" "}
+              <span className="font-bold text-[#123d84]">
+                {totalMarks} / {maxMarksSum}
+              </span>
+              &nbsp;|&nbsp; Average:{" "}
+              <span className="font-bold text-[#123d84]">{avgMarks}%</span>
             </div>
           </div>
 
           <div className="flex justify-end gap-3">
             <button
-                className="px-[22px] py-[11px] border border-[#e5e7eb] rounded-[10px] bg-white text-sm text-[#374151] hover:bg-[#f3f4f6] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                disabled={performanceLoading}
-                onClick={() => {
-                  setTermModal(false); // close modal
-                  setEditMode(false); // exit edit mode
-                  setAcademic(""); // reset academic
-                  setMarks([]); // clear marks
-                  setSubjects([]); // clear subjects
-                  setFormError("");
-                  setSem("sem1"); // clear validation error
-                }}
-              >
-                Cancel
-              </button>
+              className="px-[22px] py-[11px] border border-[#e5e7eb] rounded-[10px] bg-white text-sm text-[#374151] hover:bg-[#f3f4f6] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={performanceLoading}
+              onClick={() => {
+                setTermModal(false); // close modal
+                setEditMode(false); // exit edit mode
+                setAcademic(""); // reset academic
+                setMarks([]); // clear marks
+                setSubjects([]); // clear subjects
+                setFormError("");
+                setSem("sem1"); // clear validation error
+              }}
+            >
+              Cancel
+            </button>
 
-              <button
-                type="button"
-                onClick={handleSavePerformance}
-                disabled={performanceLoading}
-                className={`px-[26px] py-[11px] rounded-[10px] text-sm font-medium text-white flex items-center justify-center gap-2 transition-opacity
+            <button
+              type="button"
+              onClick={handleSavePerformance}
+              disabled={performanceLoading || (editMode ? !canEdit : !canAdd)}
+              className={`px-[26px] py-[11px] rounded-[10px] text-sm font-medium text-white flex items-center justify-center gap-2 transition-opacity
     ${performanceLoading ? "bg-gray-400 cursor-not-allowed" : "bg-gradient-to-b from-[#144196] to-[#0b2456] hover:opacity-90"}
   `}
-              >
-                {performanceLoading ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                    {editMode ? "Updating..." : "Saving..."}
-                  </>
-                ) : editMode ? (
-                  "Update"
-                ) : (
-                  "Save"
-                )}
-              </button>
+            >
+              {performanceLoading ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  {editMode ? "Updating..." : "Saving..."}
+                </>
+              ) : editMode ? (
+                "Update"
+              ) : (
+                "Save"
+              )}
+            </button>
           </div>
         </div>
       </Modal>
@@ -1765,7 +1835,9 @@ const Studentdetails = () => {
           },
         }}
       >
-        <h3 className="text-lg font-semibold mb-4 text-[#123d84]">Delete Record?</h3>
+        <h3 className="text-lg font-semibold mb-4 text-[#123d84]">
+          Delete Record?
+        </h3>
         <p className="text-sm text-gray-600 mb-6">
           Are you sure you want to delete this Term / Sem record?
         </p>

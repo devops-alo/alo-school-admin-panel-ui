@@ -315,7 +315,9 @@ export const removeStudentDiscount = (userId) => {
 };
 
 export const getDashboardUser = (batchId = "") => {
-  return apiService.get(`/user?limit=3&inStatus=ongoing&status=active${batchId ? `&batchId=${batchId}` : ""}`);
+  return apiService.get(
+    `/user?limit=3&inStatus=ongoing&status=active${batchId ? `&batchId=${batchId}` : ""}`,
+  );
 };
 
 export const getDashboardEvents = (status) => {
@@ -325,7 +327,9 @@ export const getDashboardEvents = (status) => {
 export const getDashboardLeave = (status, batchId = "") => {
   const today = new Date().toLocaleDateString("en-CA");
 
-  return apiService.get(`/leave?status=${status}&date=${today}&limit=5${batchId ? `&batchId=${batchId}` : ""}`);
+  return apiService.get(
+    `/leave?status=${status}&date=${today}&limit=5${batchId ? `&batchId=${batchId}` : ""}`,
+  );
 };
 
 export const studentCount = (batchId = "") => {
@@ -342,11 +346,15 @@ export const getAttendanceStudentList = (userId) => {
 
 export const getTodayrate = (batchId = "") => {
   const today = new Date().toLocaleDateString("en-CA");
-  return apiService.get(`/attendance/rate?date=${today}${batchId ? `&batchId=${batchId}` : ""}`);
+  return apiService.get(
+    `/attendance/rate?date=${today}${batchId ? `&batchId=${batchId}` : ""}`,
+  );
 };
 
 export const getDashboardAttendencerate = (date, batchId = "") => {
-  return apiService.get(`/attendance/rate?date=${date}${batchId ? `&batchId=${batchId}` : ""}`);
+  return apiService.get(
+    `/attendance/rate?date=${date}${batchId ? `&batchId=${batchId}` : ""}`,
+  );
 };
 
 // notification
@@ -359,13 +367,20 @@ export const updateNotification = (id, read) => {
   return apiService.put(`/notification/${id}`, { isRead: read });
 };
 
-export const markAllNotificationsRead = (notificationType = "admin", category) => {
+export const markAllNotificationsRead = (
+  notificationType = "admin",
+  category,
+) => {
   const categoryParam = category ? `&category=${category}` : "";
-  return apiService.put(`/notification/mark-all-read?notificationType=${notificationType}${categoryParam}`);
+  return apiService.put(
+    `/notification/mark-all-read?notificationType=${notificationType}${categoryParam}`,
+  );
 };
 
 export const getNotificationCategoryCounts = (notificationType = "admin") => {
-  return apiService.get(`/notification/category-counts?notificationType=${notificationType}`);
+  return apiService.get(
+    `/notification/category-counts?notificationType=${notificationType}`,
+  );
 };
 
 // enquiry
@@ -667,8 +682,6 @@ export const updateComplaintStatus = (id, status) => {
   });
 };
 
-
-
 export const getAllHarassment = (page = 1, limit = 10) => {
   return apiService.get(`/harassment/get-all?page=${page}&limit=${limit}`);
 };
@@ -763,8 +776,121 @@ export const deletePlacement = (id) => {
   return apiService.delete(`/placement/${id}`);
 };
 
-export const excelPlacements = (value = "", status = "", courseId = "", batchId = "") => {
+export const excelPlacements = (
+  value = "",
+  status = "",
+  courseId = "",
+  batchId = "",
+) => {
   return apiService.get(
     `/placement/excel?value=${value}${status ? `&status=${status}` : ""}${courseId ? `&courseId=${courseId}` : ""}${batchId ? `&batchId=${batchId}` : ""}`,
   );
+};
+
+
+/* =========================
+   SUB ADMIN MANAGEMENT
+========================= */
+
+// Create user
+export const createUserApi = (payload) => {
+  return apiService.post("/user/create", payload);
+};
+
+// Get users
+
+// export const getUsersApi = (search = "", limit = 10, offset = 0) => {
+//   return apiService.get(
+//     `/user?role=sub-admin,admin&search=${encodeURIComponent(
+//       search.trim(),
+//     )}&limit=${limit}&offset=${offset}`,
+//   );
+// };
+
+
+export const getUsersApi = (
+  search = "",
+  limit = 10,
+  offset = 0,
+  role = "sub-admin",
+) => {
+  return apiService.get(
+    `/user?role=${encodeURIComponent(role)}&search=${encodeURIComponent(
+      search.trim(),
+    )}&limit=${limit}&offset=${offset}`,
+  );
+};
+
+
+// Edit user details
+export const editUserApi = (id, payload) => {
+  return apiService.put(`/user/${id}`, payload);
+};
+
+// Update user status
+export const updateUserStatusApi = (id, status) => {
+  return apiService.put(`/user/${id}`, {
+    status,
+  });
+};
+
+// Delete user
+export const deleteUserApi = (id) => {
+  return apiService.delete(`/user/${id}`);
+};
+// Get user by ID
+export const getUserByIdApi = (id) => {
+  return apiService.get(`/user/${id}`);
+};
+
+//get settings
+export const getSettingsApi = () => {
+  return apiService.get(`/setting`);
+};
+//delete settings
+export const deleteSettingsApi = (id) => {
+  return apiService.delete(`/setting/${id}`);
+};
+
+//update settings
+export const updateSettingsApi = (id, payload) => {
+  return apiService.put(`/setting/${id}`, payload);
+};
+
+//add settings
+export const addSettingsApi = (payload) => {
+  return apiService.post(`/setting/create`, payload);
+};
+
+/* ---------------- Daily quotes ----------------
+   The quotes students get after checking in on the student panel,
+   and how many face-down cards they pick from. */
+
+// GET ?offset=&limit=&value=&status=active|inactive
+// -> { totalCount, fetchCount, activeCount, pickedToday, data }
+export const getDailyQuotesApi = (params) => {
+  return apiService.get(`/dailyQuote/quotes`, params);
+};
+
+// { text, author }
+export const addDailyQuoteApi = (payload) => {
+  return apiService.post(`/dailyQuote/quotes`, payload);
+};
+
+// { text?, author?, status? }
+export const updateDailyQuoteApi = (id, payload) => {
+  return apiService.put(`/dailyQuote/quotes/${id}`, payload);
+};
+
+export const deleteDailyQuoteApi = (id) => {
+  return apiService.delete(`/dailyQuote/quotes/${id}`);
+};
+
+// -> { cardCount, minCardCount, maxCardCount }
+export const getDailyQuoteSettingsApi = () => {
+  return apiService.get(`/dailyQuote/settings`);
+};
+
+export const updateDailyQuoteSettingsApi = (cardCount) => {
+  return apiService.put(`/dailyQuote/settings`, { cardCount });
 };

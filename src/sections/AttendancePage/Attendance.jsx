@@ -28,6 +28,7 @@ import TrendingUpOutlinedIcon from '@mui/icons-material/TrendingUpOutlined';
 import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined';
 import PersonOffOutlinedIcon from '@mui/icons-material/PersonOffOutlined';
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined';
+import { hasActionAccess } from "../utils/permissions";
 
 
 const theme = createTheme({
@@ -52,6 +53,12 @@ const theme = createTheme({
   },
 });
 const Attandance = () => {
+  const canView = hasActionAccess("/attendence", "view");
+
+  const canViewLeaveRequests = hasActionAccess(
+    "/attendence/leaverequest",
+    "view",
+  );
   const [limit, setlimit] = useState(10);
   const [totallist, settotal] = useState(0);
   const [totalpages, setpage] = useState(0);
@@ -283,6 +290,7 @@ const Attandance = () => {
   };
 
   let getExcel = async () => {
+    if (!canView) return;
     try {
       let res = await excelAttendance(searchText, courseId, batchId, date, status);
       console.log("Axios response:", res);
@@ -319,6 +327,9 @@ const Attandance = () => {
       console.log("Error downloading Excel:", err);
     }
   };
+  if (!canView) {
+    return <div>You don't have permission to view attendance.</div>;
+  }
   return (
     <div className={styles.container}>
       <ToastContainer />
@@ -328,16 +339,15 @@ const Attandance = () => {
         </div>
         <div className={styles.attendanceright}>
           <div className={styles.attendancerightdiv}>
-
             <div className={styles.selectWrapper}>
               <FormControl
                 variant="outlined"
                 size="small"
                 sx={{
                   minWidth: 150,
-                  backgroundColor: '#fff',
-                  borderRadius: '10px',
-                  border: '1px solid #e5e7eb',
+                  backgroundColor: "#fff",
+                  borderRadius: "10px",
+                  border: "1px solid #e5e7eb",
                 }}
               >
                 <Select
@@ -346,22 +356,21 @@ const Attandance = () => {
                   displayEmpty
                   IconComponent={KeyboardArrowDownIcon}
                   sx={{
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      border: 'none',
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      border: "none",
                     },
-                    fontSize: '14px',
-                    fontFamily: 'inherit',
-                    color: '#374151',
-                    padding: '4px 10px',
-                    height: '42px',
-                    border: 'none'
+                    fontSize: "14px",
+                    fontFamily: "inherit",
+                    color: "#374151",
+                    padding: "4px 10px",
+                    height: "42px",
+                    border: "none",
                   }}
                 >
                   <MenuItem value={"all"}>All Status</MenuItem>
                   <MenuItem value={false}>Present</MenuItem>
                   <MenuItem value={true}>Absent</MenuItem>
                   <MenuItem value={"noLeave"}>Not Checked In</MenuItem>
-
                 </Select>
               </FormControl>
             </div>
@@ -371,9 +380,9 @@ const Attandance = () => {
                 size="small"
                 sx={{
                   minWidth: 150,
-                  backgroundColor: '#fff',
-                  borderRadius: '10px',
-                  border: '1px solid #e5e7eb',
+                  backgroundColor: "#fff",
+                  borderRadius: "10px",
+                  border: "1px solid #e5e7eb",
                 }}
               >
                 <Select
@@ -382,15 +391,15 @@ const Attandance = () => {
                   displayEmpty
                   IconComponent={KeyboardArrowDownIcon}
                   sx={{
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      border: 'none',
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      border: "none",
                     },
-                    fontSize: '14px',
-                    fontFamily: 'inherit',
-                    color: '#374151',
-                    padding: '4px 10px',
-                    height: '42px',
-                    border: 'none'
+                    fontSize: "14px",
+                    fontFamily: "inherit",
+                    color: "#374151",
+                    padding: "4px 10px",
+                    height: "42px",
+                    border: "none",
                   }}
                 >
                   <MenuItem value="">All Batches</MenuItem>
@@ -408,9 +417,9 @@ const Attandance = () => {
                 size="small"
                 sx={{
                   minWidth: 150,
-                  backgroundColor: '#fff',
-                  borderRadius: '10px',
-                  border: '1px solid #e5e7eb',
+                  backgroundColor: "#fff",
+                  borderRadius: "10px",
+                  border: "1px solid #e5e7eb",
                 }}
               >
                 <Select
@@ -419,33 +428,34 @@ const Attandance = () => {
                   displayEmpty
                   IconComponent={KeyboardArrowDownIcon}
                   sx={{
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      border: 'none',
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      border: "none",
                     },
-                    fontSize: '14px',
-                    fontFamily: 'inherit',
-                    color: '#374151',
-                    padding: '4px 10px',
-                    height: '42px',
-                    border: 'none'
+                    fontSize: "14px",
+                    fontFamily: "inherit",
+                    color: "#374151",
+                    padding: "4px 10px",
+                    height: "42px",
+                    border: "none",
                   }}
                   disabled={!batchId}
                 >
                   <MenuItem value="">All Courses</MenuItem>
                   {courseOptions.map((item, index) => {
                     return (
-                      <MenuItem value={item.courseId} key={index}>{item.courseName}</MenuItem>
-                    )
+                      <MenuItem value={item.courseId} key={index}>
+                        {item.courseName}
+                      </MenuItem>
+                    );
                   })}
                 </Select>
               </FormControl>
             </div>
 
             <div className={styles.dateWrapper}>
-
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DatePicker
-                  value={date ? dayjs(date, "YYYY-MM-DD") : null}   // keep ISO date format for binding
+                  value={date ? dayjs(date, "YYYY-MM-DD") : null} // keep ISO date format for binding
                   onChange={(newValue) => {
                     if (newValue) {
                       const formatted = dayjs(newValue).format("YYYY-MM-DD"); // match <input type="date">
@@ -459,26 +469,27 @@ const Attandance = () => {
                   slotProps={{
                     textField: {
                       fullWidth: true,
-                      placeholder: 'DD/MM/YYYY',
+                      placeholder: "DD/MM/YYYY",
                       onClick: () => setOpen(true),
                       error: Boolean(Error?.DateofBrith),
                       sx: {
-                        '& .MuiPickersOutlinedInput-root': {
-                          height: '42px',
-                          outline: 'none',
-                          backgroundColor: '#fff',
-                          borderRadius: '10px',
+                        "& .MuiPickersOutlinedInput-root": {
+                          height: "42px",
+                          outline: "none",
+                          backgroundColor: "#fff",
+                          borderRadius: "10px",
                         },
-                        '& fieldset': {
-                          border: '1px solid #e5e7eb',
+                        "& fieldset": {
+                          border: "1px solid #e5e7eb",
                         },
-                        '&:hover fieldset': {
-                          border: '1px solid #123d84',
-                          outline: 'none'
+                        "&:hover fieldset": {
+                          border: "1px solid #123d84",
+                          outline: "none",
                         },
-                        '& .MuiPickersOutlinedInput-root.Mui-focused .MuiPickersOutlinedInput-notchedOutline': {
-                          border: '1px solid #123d84'
-                        }
+                        "& .MuiPickersOutlinedInput-root.Mui-focused .MuiPickersOutlinedInput-notchedOutline":
+                          {
+                            border: "1px solid #123d84",
+                          },
                       },
                     },
                   }}
@@ -495,8 +506,7 @@ const Attandance = () => {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <BiSearchAlt style={{ fontSize: 18, color: '#6b7280' }} />
-
+                      <BiSearchAlt style={{ fontSize: 18, color: "#6b7280" }} />
                     </InputAdornment>
                   ),
                   endAdornment: searchText && (
@@ -507,40 +517,44 @@ const Attandance = () => {
                     </InputAdornment>
                   ),
                   style: {
-                    backgroundColor: '#fff',
-                    borderRadius: '10px',
-                    height: '42px',
-                    fontSize: '14px',
-                    padding: '4px 10px',
-                    border: '1px solid #e5e7eb',
-                    fontFamily: 'inherit',
+                    backgroundColor: "#fff",
+                    borderRadius: "10px",
+                    height: "42px",
+                    fontSize: "14px",
+                    padding: "4px 10px",
+                    border: "1px solid #e5e7eb",
+                    fontFamily: "inherit",
                   },
-                  notched: false
+                  notched: false,
                 }}
                 sx={{
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    border: 'none',
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    border: "none",
                   },
-                  width: '100%',
+                  width: "100%",
                 }}
               />
             </div>
             <div>
-              {(status?.toString().trim() || courseId?.toString().trim() || batchId?.toString().trim() || date || searchText) && (
+              {(status?.toString().trim() ||
+                courseId?.toString().trim() ||
+                batchId?.toString().trim() ||
+                date ||
+                searchText) && (
                 <button className={styles.clear} onClick={handlefilterSearch}>
                   <IoClose />
                 </button>
               )}
-
-
             </div>
-            <button className={styles.exportBtn} onClick={getExcel}>
-              Export<MdOutlineFileDownload />
-            </button>
+            {canView && (
+              <button className={styles.exportBtn} onClick={getExcel}>
+                Export <MdOutlineFileDownload />
+              </button>
+            )}
           </div>
         </div>
       </div>
-      {rateLoading ?
+      {rateLoading ? (
         <div className={styles.attendancemiddle}>
           <div className={styles.attendancemiddlediv}>
             <Skeleton variant="text" width={120} height={20} />
@@ -573,49 +587,60 @@ const Attandance = () => {
               </div>
             </div>
           </div>
-        </div> :
-        rate &&
-        <div className={styles.attendancemiddle}>
-          <div className={styles.attendancemiddlediv}>
-            <GroupsOutlinedIcon sx={{ fontSize: 20, color: '#123d84' }} />
-            <p>Total No of Students</p>
-            <p>{rate.studentCount}</p>
-          </div>
-          <div className={`${styles.attendancemiddlediv} ${styles.statGreen}`}>
-            <TrendingUpOutlinedIcon sx={{ fontSize: 20, color: '#12805c' }} />
-            <p>Today Attendance Rate</p>
-            <p>{rate.attendanceRate}</p>
-          </div>
-          <div className={`${styles.attendancemiddlediv} ${styles.statRed}`}>
-            <PersonOffOutlinedIcon sx={{ fontSize: 20, color: '#d92d20' }} />
-            <p>Absent</p>
-            <p>{rate.absentCount}</p>
-          </div>
-          <div className={`${styles.attendancemiddlediv} ${styles.statAmber}`}>
-            <AccessTimeOutlinedIcon sx={{ fontSize: 20, color: '#b45309' }} />
-            <p>Not Checked In</p>
-            <p>{rate.notCheckedInCount}</p>
-          </div>
-          <div className={`${styles.attendancemiddlediv} ${styles.statRed}`}>
-            <div className={styles.attendancemiddlediv1}>
-              <div>
-                <EventBusyOutlinedIcon sx={{ fontSize: 20, color: '#d92d20' }} />
-                <p>Leave Requests</p>
-                <p>{rate.leaveRequestCount}</p>
-              </div>
-              <div>
-                <div className={styles.leaveReqIcon} onClick={() => {
-
-                  handleClick(date, courseId, batchId, searchText);
-                }}>
-                  <FaArrowRight />
+        </div>
+      ) : (
+        rate && (
+          <div className={styles.attendancemiddle}>
+            <div className={styles.attendancemiddlediv}>
+              <GroupsOutlinedIcon sx={{ fontSize: 20, color: "#123d84" }} />
+              <p>Total No of Students</p>
+              <p>{rate.studentCount}</p>
+            </div>
+            <div
+              className={`${styles.attendancemiddlediv} ${styles.statGreen}`}
+            >
+              <TrendingUpOutlinedIcon sx={{ fontSize: 20, color: "#12805c" }} />
+              <p>Today Attendance Rate</p>
+              <p>{rate.attendanceRate}</p>
+            </div>
+            <div className={`${styles.attendancemiddlediv} ${styles.statRed}`}>
+              <PersonOffOutlinedIcon sx={{ fontSize: 20, color: "#d92d20" }} />
+              <p>Absent</p>
+              <p>{rate.absentCount}</p>
+            </div>
+            <div
+              className={`${styles.attendancemiddlediv} ${styles.statAmber}`}
+            >
+              <AccessTimeOutlinedIcon sx={{ fontSize: 20, color: "#b45309" }} />
+              <p>Not Checked In</p>
+              <p>{rate.notCheckedInCount}</p>
+            </div>
+            <div className={`${styles.attendancemiddlediv} ${styles.statRed}`}>
+              <div className={styles.attendancemiddlediv1}>
+                <div>
+                  <EventBusyOutlinedIcon
+                    sx={{ fontSize: 20, color: "#d92d20" }}
+                  />
+                  <p>Leave Requests</p>
+                  <p>{rate.leaveRequestCount}</p>
+                </div>
+                <div>
+                  {canViewLeaveRequests && (
+                    <div
+                      className={styles.leaveReqIcon}
+                      onClick={() =>
+                        handleClick(date, courseId, batchId, searchText)
+                      }
+                    >
+                      <FaArrowRight />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           </div>
-        </div>
-
-      }
+        )
+      )}
 
       <div className={styles.attendancebottom}>
         <table className={styles.table}>
@@ -631,64 +656,190 @@ const Attandance = () => {
               <th>Remarks</th>
             </tr>
           </thead>
-          {loading ?
+          {loading ? (
             <tr>
-              <td colSpan="8" className="text-center py-20 text-lg text-gray-500 font-semibold" style={{ border: "none" }}>
+              <td
+                colSpan="8"
+                className="text-center py-20 text-lg text-gray-500 font-semibold"
+                style={{ border: "none" }}
+              >
                 <Loader />
               </td>
             </tr>
-            : <tbody>
-              {Array.isArray(list) && list.length > 0 ?
-
+          ) : (
+            <tbody>
+              {Array.isArray(list) && list.length > 0 ? (
                 list.map((item) => (
-
-
                   <tr key={item._id}>
                     <td style={{ color: item?.onLeave && "#d92d20" }}>
-                      <div style={{ textTransform: "capitalize" }}>{item.userDetails?.name || item.name}</div>
-                      <div style={{ fontSize: 12, color: item?.onLeave ? "#d92d20" : "#6b7280" }}>{item.userDetails?.studentId || item.studentId}</div>
-                      <div style={{ fontSize: 12, color: item?.onLeave ? "#d92d20" : "#6b7280" }}>{item.userDetails?.mobileNo || item.mobileNo}</div>
+                      <div style={{ textTransform: "capitalize" }}>
+                        {item.userDetails?.name || item.name}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: item?.onLeave ? "#d92d20" : "#6b7280",
+                        }}
+                      >
+                        {item.userDetails?.studentId || item.studentId}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: item?.onLeave ? "#d92d20" : "#6b7280",
+                        }}
+                      >
+                        {item.userDetails?.mobileNo || item.mobileNo}
+                      </div>
                     </td>
-                    <td style={{ color: item?.onLeave && "#d92d20" }}>{item.courseDetails?.courseName}</td>
-                    {item.date ?
-                      <td style={{ color: item?.onLeave && "#d92d20", textTransform: "capitalize" }}>{item.date?.split("T")[0]}</td>
-                      :
-                      <td style={{ color: item?.onLeave && "#d92d20", textTransform: "capitalize" }}>   {date}
+                    <td style={{ color: item?.onLeave && "#d92d20" }}>
+                      {item.courseDetails?.courseName}
+                    </td>
+                    {item.date ? (
+                      <td
+                        style={{
+                          color: item?.onLeave && "#d92d20",
+                          textTransform: "capitalize",
+                        }}
+                      >
+                        {item.date?.split("T")[0]}
                       </td>
-                    }
-                                        <td>{item?.onLeave ? <p style={{ color: "#d92d20" }}>Leave</p> : item?.notCheckedIn ? <span className={styles.notCheckedInBadge}>Not Checked In</span> : item.inTime ? formatTime(item?.inTime) : <p style={{ background: "none", WebkitBackgroundClip: "initial", WebkitTextFillColor: "initial" }}>--:--</p>}</td>
-                    <td style={{ color: item?.onLeave && "#d92d20" }}>{item.breakTime?.length > 0 ? item?.breakTime[0] ? formatTime(item?.breakTime[0]) : <p style={{ background: "none", WebkitBackgroundClip: "initial", WebkitTextFillColor: "initial" }}>--:--</p> : <p style={{ background: "none", WebkitBackgroundClip: "initial", WebkitTextFillColor: "initial" }}>--:--</p>}</td>
-                    <td style={{ color: item?.onLeave && "#d92d20" }}>{item.breakTime?.length > 0 ? item?.breakTime[1] ? formatTime(item?.breakTime[1]) : <p style={{ background: "none", WebkitBackgroundClip: "initial", WebkitTextFillColor: "initial" }}>--:--</p> : <p style={{ background: "none", WebkitBackgroundClip: "initial", WebkitTextFillColor: "initial" }}>--:--</p>}</td>
-                    <td >
-                      {item?.onLeave ? '' : item.outTime ? formatTime(item?.outTime) : <p style={{ background: "none", WebkitBackgroundClip: "initial", WebkitTextFillColor: "initial" }}>--:--</p>
-                      }
+                    ) : (
+                      <td
+                        style={{
+                          color: item?.onLeave && "#d92d20",
+                          textTransform: "capitalize",
+                        }}
+                      >
+                        {" "}
+                        {date}
+                      </td>
+                    )}
+                    <td>
+                      {item?.onLeave ? (
+                        <p style={{ color: "#d92d20" }}>Leave</p>
+                      ) : item?.notCheckedIn ? (
+                        <span className={styles.notCheckedInBadge}>
+                          Not Checked In
+                        </span>
+                      ) : item.inTime ? (
+                        formatTime(item?.inTime)
+                      ) : (
+                        <p
+                          style={{
+                            background: "none",
+                            WebkitBackgroundClip: "initial",
+                            WebkitTextFillColor: "initial",
+                          }}
+                        >
+                          --:--
+                        </p>
+                      )}
                     </td>
-                    <td style={{ color: item?.onLeave && "#d92d20" }}>{item.remarks || '-'}</td>
+                    <td style={{ color: item?.onLeave && "#d92d20" }}>
+                      {item.breakTime?.length > 0 ? (
+                        item?.breakTime[0] ? (
+                          formatTime(item?.breakTime[0])
+                        ) : (
+                          <p
+                            style={{
+                              background: "none",
+                              WebkitBackgroundClip: "initial",
+                              WebkitTextFillColor: "initial",
+                            }}
+                          >
+                            --:--
+                          </p>
+                        )
+                      ) : (
+                        <p
+                          style={{
+                            background: "none",
+                            WebkitBackgroundClip: "initial",
+                            WebkitTextFillColor: "initial",
+                          }}
+                        >
+                          --:--
+                        </p>
+                      )}
+                    </td>
+                    <td style={{ color: item?.onLeave && "#d92d20" }}>
+                      {item.breakTime?.length > 0 ? (
+                        item?.breakTime[1] ? (
+                          formatTime(item?.breakTime[1])
+                        ) : (
+                          <p
+                            style={{
+                              background: "none",
+                              WebkitBackgroundClip: "initial",
+                              WebkitTextFillColor: "initial",
+                            }}
+                          >
+                            --:--
+                          </p>
+                        )
+                      ) : (
+                        <p
+                          style={{
+                            background: "none",
+                            WebkitBackgroundClip: "initial",
+                            WebkitTextFillColor: "initial",
+                          }}
+                        >
+                          --:--
+                        </p>
+                      )}
+                    </td>
+                    <td>
+                      {item?.onLeave ? (
+                        ""
+                      ) : item.outTime ? (
+                        formatTime(item?.outTime)
+                      ) : (
+                        <p
+                          style={{
+                            background: "none",
+                            WebkitBackgroundClip: "initial",
+                            WebkitTextFillColor: "initial",
+                          }}
+                        >
+                          --:--
+                        </p>
+                      )}
+                    </td>
+                    <td style={{ color: item?.onLeave && "#d92d20" }}>
+                      {item.remarks || "-"}
+                    </td>
                   </tr>
                 ))
-
-                :
-                <tr >
-                  <td colSpan="8" className="text-center py-20 text-lg text-gray-500 font-semibold " style={{ border: "none" }}>
-                    <img src={nodata} alt="" width={'200px'} height={'200px'} className='m-auto' />
+              ) : (
+                <tr>
+                  <td
+                    colSpan="8"
+                    className="text-center py-20 text-lg text-gray-500 font-semibold "
+                    style={{ border: "none" }}
+                  >
+                    <img
+                      src={nodata}
+                      alt=""
+                      width={"200px"}
+                      height={"200px"}
+                      className="m-auto"
+                    />
                     <p className="text-center text-gray-500">No Data Found</p>
                   </td>
                 </tr>
-
-              }
+              )}
             </tbody>
-          }
+          )}
         </table>
       </div>
 
-
-      <div className='flex flex-wrap justify-between items-center gap-3 w-full mt-4'>
-
-        {totalpages > 0 &&
+      <div className="flex flex-wrap justify-between items-center gap-3 w-full mt-4">
+        {totalpages > 0 && (
           <ThemeProvider theme={theme}>
             <div className="flex justify-end">
               <Pagination
-
                 count={totalpages}
                 page={offset}
                 onChange={handlePageChange}
@@ -698,16 +849,15 @@ const Attandance = () => {
               />
             </div>
           </ThemeProvider>
-        }
-        {totalpages > 0 &&
+        )}
+        {totalpages > 0 && (
           <div className="flex justify-between items-center">
             <p className="text-gray-500 text-sm">
               Showing {startIndex} – {endIndex} of {totallist} students
             </p>
           </div>
-        }
+        )}
       </div>
-
     </div>
   );
 };

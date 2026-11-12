@@ -6,6 +6,7 @@ import Stack from "@mui/material/Stack";
 import AlumniModal from "../../../model/addAluminiModel/AddAluminiModel";
 import { getAlumniList, deleteAlumni } from "../../../api/Serviceapi";
 import { toast } from "react-toastify";
+import { hasActionAccess } from "../../utils/permissions";
 
 import {
   Dialog,
@@ -20,7 +21,10 @@ const AlunimiImage = () => {
   const [editData, setEditData] = useState(null);
   const [alumni, setAlumni] = useState([]);
   const [page, setPage] = useState(1);
-
+  const canAdd = hasActionAccess("/alumniimages", "add");
+  const canEdit = hasActionAccess("/alumniimages", "edit");
+  const canDelete = hasActionAccess("/alumniimages", "delete");
+  const canShowActions = canEdit || canDelete;
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -99,9 +103,11 @@ const handleDelete = async () => {
 
           <div className={styles.card}>
             <div className={styles.addRow}>
-              <button className={styles.addBtn} onClick={handleAddOpen}>
-                + Add Alumni
-              </button>
+              {canAdd && (
+                <button className={styles.addBtn} onClick={handleAddOpen}>
+                  + Add Alumni
+                </button>
+              )}
             </div>
 
             <div className={styles.tableWrapper}>
@@ -113,28 +119,34 @@ const handleDelete = async () => {
                     <th>Company Name</th>
                     <th>Company Logo</th>
                     <th>Position</th>
-                    <th>Action</th>
+                    {canShowActions && <th>Action</th>}
                   </tr>
                 </thead>
 
                 <tbody>
                   {selectedData.length === 0 ? (
                     <tr>
-                      <td colSpan="6">
-                          <div style={{ textAlign: "center", padding: "40px 0", opacity: 0.8 }}>
-                            <img
-  src="https://cdn-icons-png.flaticon.com/512/4076/4076549.png"
-  alt="empty"
-  width={120}
-  style={{
-    display: "block",
-    margin: "0 auto 10px auto",
-  }}
-/>
-                            <p>No Alumni Yet</p>
-                            {/* <small>Add your first event to get started</small> */}
-                          </div>
-                        </td>
+                      <td colSpan={canShowActions ? 6 : 5}>
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "40px 0",
+                            opacity: 0.8,
+                          }}
+                        >
+                          <img
+                            src="https://cdn-icons-png.flaticon.com/512/4076/4076549.png"
+                            alt="empty"
+                            width={120}
+                            style={{
+                              display: "block",
+                              margin: "0 auto 10px auto",
+                            }}
+                          />
+                          <p>No Alumni Yet</p>
+                          {/* <small>Add your first event to get started</small> */}
+                        </div>
+                      </td>
                     </tr>
                   ) : (
                     selectedData.map((item) => (
@@ -160,22 +172,26 @@ const handleDelete = async () => {
                           )}
                         </td>
                         <td>{item.position || "-"}</td>
-                        <td className={styles.actions}>
-                          {/* ✏️ Edit */}
-                          <FiEdit
-                            className={styles.icon}
-                            onClick={() => handleEditOpen(item)}
-                            title="Edit"
-                          />
+                        {canShowActions && (
+                          <td className={styles.actions}>
+                            {canEdit && (
+                              <FiEdit
+                                className={styles.icon}
+                                onClick={() => handleEditOpen(item)}
+                                title="Edit"
+                              />
+                            )}
 
-                          {/* 🗑 Delete */}
-                          <FiTrash2
-                            className={styles.icon}
-                            onClick={() => openDeleteConfirm(item._id)}
-                            style={{ color: "#dc2626" }}
-                            title="Delete"
-                          />
-                        </td>
+                            {canDelete && (
+                              <FiTrash2
+                                className={styles.icon}
+                                onClick={() => openDeleteConfirm(item._id)}
+                                style={{ color: "#dc2626" }}
+                                title="Delete"
+                              />
+                            )}
+                          </td>
+                        )}
                       </tr>
                     ))
                   )}
@@ -184,7 +200,13 @@ const handleDelete = async () => {
             </div>
 
             {alumni.length > rowsPerPage && (
-              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 15 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  marginTop: 15,
+                }}
+              >
                 <Stack>
                   <Pagination
                     count={Math.ceil(alumni.length / rowsPerPage)}
@@ -210,23 +232,20 @@ const handleDelete = async () => {
         <DialogContent>
           Are you sure you want to delete this alumni?
         </DialogContent>
-      <DialogActions>
-  <Button
-    onClick={() => setOpenDelete(false)}
-    disabled={deleteLoading}
-  >
-    Cancel
-  </Button>
+        <DialogActions>
+          <Button onClick={() => setOpenDelete(false)} disabled={deleteLoading}>
+            Cancel
+          </Button>
 
-  <Button
-    variant="contained"
-    color="error"
-    onClick={handleDelete}
-    disabled={deleteLoading}
-  >
-    {deleteLoading ? "Deleting..." : "Delete"}
-  </Button>
-</DialogActions>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDelete}
+            disabled={deleteLoading}
+          >
+            {deleteLoading ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
       </Dialog>
     </>
   );

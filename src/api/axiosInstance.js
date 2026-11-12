@@ -2,27 +2,36 @@
 import axios from 'axios';
 
 const axiosInstance = axios.create({
-    baseURL: 'https://www.alosodt.com/api'
-
+    baseURL: 'https://api.alosodt.com/api'
+    // baseURL:"https://alo-school-api-g6kt.onrender.com/api"
   // baseURL: 'https://dev.alosodt.com/api'
-    // baseURL: 'http://localhost:5000/api'
+    // baseURL: 'https://zl3xj9q0-5000.inc1.devtunnels.ms/api'
   
 });
 
-axiosInstance.interceptors.request.use((config) => {
-  // const token = localStorage.getItem('authToken');
-  // const userId = localStorage.getItem('userId');
 
-  const token = sessionStorage.getItem('authToken');
-  const userId = sessionStorage.getItem('userId');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  if (userId) {
-    config.headers.userid = userId;
-  }
-  return config;
-});
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const token =
+      sessionStorage.getItem("authToken") ||
+      localStorage.getItem("authToken");
+
+    const userId =
+      sessionStorage.getItem("userId") ||
+      localStorage.getItem("userId");
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    if (userId) {
+      config.headers.userid = userId;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 axiosInstance.interceptors.response.use(
   (response) => response,

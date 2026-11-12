@@ -24,6 +24,15 @@
   font-family: 'Poppins', system-ui, sans-serif;
 }
 
+.overlayClosing {
+  animation: fadeOut 0.18s ease both;
+  pointer-events: none;
+}
+
+.dialogClosing {
+  animation: popOut 0.18s ease both;
+}
+
 .head {
   display: flex;
   align-items: center;
@@ -87,9 +96,31 @@
   }
 }
 
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes popOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .overlay,
-  .dialog {
+  .dialog,
+  .overlayClosing,
+  .dialogClosing {
     animation: none;
   }
 }

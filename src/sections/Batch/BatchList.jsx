@@ -14,6 +14,7 @@ import {
   StarIcon,
 } from "../../components/icons/Icons";
 import Loader from "../../component/loader/Loader";
+import { hasActionAccess } from "../utils/permissions";
 
 const formatDate = (date) => {
   if (!date) return "-";
@@ -36,6 +37,10 @@ const BatchList = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const navigate = useNavigate();
+  const canView = hasActionAccess("/batch", "view");
+  const canAdd = hasActionAccess("/batch", "add");
+  const canEdit = hasActionAccess("/batch", "edit");
+  const canDelete = hasActionAccess("/batch", "delete");
 
   const openCreate = () => {
     setEditing(null);
@@ -59,16 +64,18 @@ const BatchList = ({
           Batches
           <span className={styles.count}>{batches.length}</span>
         </h2>
-        <button
-          type="button"
-          className={styles.primaryBtn}
-          disabled={courses.length === 0}
-          title={courses.length === 0 ? "Create a course first" : undefined}
-          onClick={openCreate}
-        >
-          <PlusIcon width={17} height={17} />
-          Create Batch
-        </button>
+        {canAdd && (
+          <button
+            type="button"
+            className={styles.primaryBtn}
+            disabled={courses.length === 0}
+            title={courses.length === 0 ? "Create a course first" : undefined}
+            onClick={openCreate}
+          >
+            <PlusIcon width={17} height={17} />
+            Create Batch
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -87,14 +94,16 @@ const BatchList = ({
             ) : (
               <>
                 <p>Create your first batch and attach courses to it.</p>
-                <button
-                  type="button"
-                  className={styles.primaryBtn}
-                  onClick={openCreate}
-                >
-                  <PlusIcon width={17} height={17} />
-                  Create Batch
-                </button>
+                {canAdd && (
+                  <button
+                    type="button"
+                    className={styles.primaryBtn}
+                    onClick={openCreate}
+                  >
+                    <PlusIcon width={17} height={17} />
+                    Create Batch
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -114,32 +123,38 @@ const BatchList = ({
                       <h3>{b.batchName}</h3>
                     </div>
                     <div className={styles.cardActions}>
-                      <button
-                        type="button"
-                        className={`${styles.iconBtn} ${b.isPrimary ? styles.starActive : ""}`}
-                        aria-label={
-                          b.isPrimary
-                            ? `${b.batchName} is the primary batch`
-                            : `Make ${b.batchName} the primary batch`
-                        }
-                        title={
-                          b.isPrimary
-                            ? "Primary batch — used as the default filter across other screens"
-                            : "Set as primary batch"
-                        }
-                        disabled={b.isPrimary}
-                        onClick={() => onSetPrimary(b.id)}
-                      >
-                        <StarIcon width={15} height={15} />
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.iconBtn}
-                        aria-label={`Edit ${b.batchName}`}
-                        onClick={() => openEdit(b)}
-                      >
-                        <EditIcon width={15} height={15} />
-                      </button>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          className={`${styles.iconBtn} ${
+                            b.isPrimary ? styles.starActive : ""
+                          }`}
+                          aria-label={
+                            b.isPrimary
+                              ? `${b.batchName} is the primary batch`
+                              : `Make ${b.batchName} the primary batch`
+                          }
+                          title={
+                            b.isPrimary
+                              ? "Primary batch — used as the default filter across other screens"
+                              : "Set as primary batch"
+                          }
+                          disabled={b.isPrimary}
+                          onClick={() => onSetPrimary(b.id)}
+                        >
+                          <StarIcon width={15} height={15} />
+                        </button>
+                      )}
+                      {canEdit && (
+                        <button
+                          type="button"
+                          className={styles.iconBtn}
+                          aria-label={`Edit ${b.batchName}`}
+                          onClick={() => openEdit(b)}
+                        >
+                          <EditIcon width={15} height={15} />
+                        </button>
+                      )}
                     </div>
                   </header>
 
@@ -178,26 +193,30 @@ const BatchList = ({
                   </ul>
 
                   <footer className={styles.cardFoot}>
-                    <button
-                      type="button"
-                      className={styles.viewBtn}
-                      onClick={() => navigate(`/batch/${b.id}`)}
-                    >
-                      <EyeIcon width={15} height={15} />
-                      View Details
-                    </button>
-                    <label
-                      className={styles.switch}
-                      title={isActive ? "Set inactive" : "Set active"}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isActive}
-                        aria-label={`${b.batchName} active status`}
-                        onChange={() => onToggleActive(b.id)}
-                      />
-                      <span className={styles.slider} aria-hidden="true" />
-                    </label>
+                    {canView && (
+                      <button
+                        type="button"
+                        className={styles.viewBtn}
+                        onClick={() => navigate(`/batch/${b.id}`)}
+                      >
+                        <EyeIcon width={15} height={15} />
+                        View Details
+                      </button>
+                    )}
+                    {canEdit && (
+                      <label
+                        className={styles.switch}
+                        title={isActive ? "Set inactive" : "Set active"}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isActive}
+                          aria-label={`${b.batchName} active status`}
+                          onChange={() => onToggleActive(b.id)}
+                        />
+                        <span className={styles.slider} aria-hidden="true" />
+                      </label>
+                    )}
                   </footer>
                 </article>
               );

@@ -27,6 +27,7 @@ import { IoClose } from "react-icons/io5";
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { MdOutlineFileDownload } from "react-icons/md";
+import { hasActionAccess } from "../utils/permissions";
 
 const theme = createTheme({
   components: {
@@ -51,6 +52,9 @@ const theme = createTheme({
 });
 
 const Studentlist = () => {
+  const canAdd = hasActionAccess("/students", "add");
+  const canEdit = hasActionAccess("/students", "edit");
+  const canDelete = hasActionAccess("/students", "delete");
   const [limit, setlimit] = useState(10);
   const [totaluser, settotal] = useState(0);
   const [totalpages, setpage] = useState(0);
@@ -328,245 +332,258 @@ const Studentlist = () => {
 
 
   return (
-
     <>
-      <ToastContainer
-
-      />
+      <ToastContainer />
 
       <div>
-        <div className={styles.container} >
+        <div className={styles.container}>
           <div className={styles.pageHeader}>
             <h4 className={styles.heading}>Student Management</h4>
             <div className={styles.headerActions}>
-              <button onClick={() => setIsOpen(true)} className={styles.primaryBtn}><PlusIcon className='w-4 h-4' />Add Student</button>
-              <button className={styles.exportBtn} onClick={getExcel}>Export<MdOutlineFileDownload />
+              {canAdd && (
+                <button
+                  onClick={() => setIsOpen(true)}
+                  className={styles.primaryBtn}
+                >
+                  <PlusIcon className="w-4 h-4" />
+                  Add Student
+                </button>
+              )}
+              <button className={styles.exportBtn} onClick={getExcel}>
+                Export
+                <MdOutlineFileDownload />
               </button>
             </div>
           </div>
 
           <div className={styles.filterBar}>
-
-              <div>
-                <FormControl
-                  variant="outlined"
-                  size="small"
+            <div>
+              <FormControl
+                variant="outlined"
+                size="small"
+                sx={{
+                  minWidth: 120,
+                  backgroundColor: "#fff",
+                  borderRadius: "10px",
+                  border: "1px solid #e5e7eb",
+                }}
+              >
+                <Select
+                  value={activestatus}
+                  onChange={statusChange}
+                  displayEmpty
+                  IconComponent={KeyboardArrowDownIcon}
                   sx={{
-                    minWidth: 120,
-                    backgroundColor: '#fff',
-                    borderRadius: '10px',
-                    border: '1px solid #e5e7eb'
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      border: "none",
+                    },
+                    fontSize: "14px",
+                    padding: "4px 10px",
+                    height: "42px",
+                    border: "none",
                   }}
                 >
-                  <Select
-                    value={activestatus}
-                    onChange={statusChange}
-                    displayEmpty
-                    IconComponent={KeyboardArrowDownIcon}
-                    sx={{
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        border: 'none',
-                      },
-                      fontSize: '14px',
-                      padding: '4px 10px',
-                      height: '42px',
-                      border: 'none'
-                    }}
-                  >
-
-                    <MenuItem value="">All Status</MenuItem>
-                    <MenuItem value="active">Active</MenuItem>
-                    <MenuItem value="inactive">Inactive</MenuItem>
-
-                  </Select>
-                </FormControl>
-              </div>
-              <div >
-
-                <FormControl
-                  variant="outlined"
-                  size="small"
+                  <MenuItem value="">All Status</MenuItem>
+                  <MenuItem value="active">Active</MenuItem>
+                  <MenuItem value="inactive">Inactive</MenuItem>
+                </Select>
+              </FormControl>
+            </div>
+            <div>
+              <FormControl
+                variant="outlined"
+                size="small"
+                sx={{
+                  // minWidth: 120,
+                  backgroundColor: "#fff",
+                  borderRadius: "10px",
+                  border: "1px solid #e5e7eb",
+                }}
+              >
+                <Select
+                  value={status}
+                  onChange={handleStatusChange}
+                  displayEmpty
+                  IconComponent={KeyboardArrowDownIcon}
                   sx={{
-                    // minWidth: 120,
-                    backgroundColor: '#fff',
-                    borderRadius: '10px',
-                    border: '1px solid #e5e7eb'
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      border: "none",
+                    },
+                    fontSize: "14px",
+                    padding: "4px 10px",
+                    height: "42px",
+                    border: "none",
                   }}
                 >
-                  <Select
-                    value={status}
-                    onChange={handleStatusChange}
-                    displayEmpty
-                    IconComponent={KeyboardArrowDownIcon}
-                    sx={{
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        border: 'none',
-                      },
-                      fontSize: '14px',
-                      padding: '4px 10px',
-                      height: '42px',
-                      border: 'none'
-                    }}
-                  >
-                    <MenuItem value="">All Course Status</MenuItem>
-                    <MenuItem value="completed">Completed</MenuItem>
-                    <MenuItem value="ongoing">Ongoing</MenuItem>
-                    <MenuItem value="placed">Placed</MenuItem>
-                    <MenuItem value="dropout">Dropout</MenuItem>
+                  <MenuItem value="">All Course Status</MenuItem>
+                  <MenuItem value="completed">Completed</MenuItem>
+                  <MenuItem value="ongoing">Ongoing</MenuItem>
+                  <MenuItem value="placed">Placed</MenuItem>
+                  <MenuItem value="dropout">Dropout</MenuItem>
 
-                    {/* {course.map((item, index) => {
+                  {/* {course.map((item, index) => {
                     return (
                       <MenuItem value={item.courseName} key={index}>{item.courseName}</MenuItem>
                     )
                   })} */}
-                  </Select>
-
-                </FormControl>
-              </div>
-              <div >
-
-                <FormControl
-                  variant="outlined"
-                  size="small"
+                </Select>
+              </FormControl>
+            </div>
+            <div>
+              <FormControl
+                variant="outlined"
+                size="small"
+                sx={{
+                  minWidth: 120,
+                  backgroundColor: "#fff",
+                  borderRadius: "10px",
+                  border: "1px solid #e5e7eb",
+                }}
+              >
+                <Select
+                  value={batchId}
+                  onChange={handleBatchChange}
+                  displayEmpty
+                  IconComponent={KeyboardArrowDownIcon}
                   sx={{
-                    minWidth: 120,
-                    backgroundColor: '#fff',
-                    borderRadius: '10px',
-                    border: '1px solid #e5e7eb'
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      border: "none",
+                    },
+                    fontSize: "14px",
+                    padding: "4px 10px",
+                    height: "42px",
+                    border: "none",
                   }}
                 >
-                  <Select
-                    value={batchId}
-                    onChange={handleBatchChange}
-                    displayEmpty
-                    IconComponent={KeyboardArrowDownIcon}
-                    sx={{
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        border: 'none',
-                      },
-                      fontSize: '14px',
-                      padding: '4px 10px',
-                      height: '42px',
-                      border: 'none'
-                    }}
-                  >
-                    <MenuItem value="">All Batches</MenuItem>
-                    {batches.map((item, index) => {
-                      return (
-                        <MenuItem value={item._id} key={index}>{item.batchName}</MenuItem>
-                      )
-                    })}
-                  </Select>
+                  <MenuItem value="">All Batches</MenuItem>
+                  {batches.map((item, index) => {
+                    return (
+                      <MenuItem value={item._id} key={index}>
+                        {item.batchName}
+                      </MenuItem>
+                    );
+                  })}
+                </Select>
+              </FormControl>
+            </div>
 
-                </FormControl>
-              </div>
-
-              <div >
-
-                <FormControl
-                  variant="outlined"
-                  size="small"
+            <div>
+              <FormControl
+                variant="outlined"
+                size="small"
+                sx={{
+                  minWidth: 120,
+                  backgroundColor: "#fff",
+                  borderRadius: "10px",
+                  border: "1px solid #e5e7eb",
+                }}
+              >
+                <Select
+                  value={courseId}
+                  onChange={handlecourseChange}
+                  displayEmpty
+                  IconComponent={KeyboardArrowDownIcon}
                   sx={{
-                    minWidth: 120,
-                    backgroundColor: '#fff',
-                    borderRadius: '10px',
-                    border: '1px solid #e5e7eb'
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      border: "none",
+                    },
+                    fontSize: "14px",
+                    padding: "4px 10px",
+                    height: "42px",
+                    border: "none",
                   }}
+                  disabled={!batchId}
                 >
-
-                  <Select
-                    value={courseId}
-                    onChange={handlecourseChange}
-                    displayEmpty
-                    IconComponent={KeyboardArrowDownIcon}
-                    sx={{
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        border: 'none',
-                      },
-                      fontSize: '14px',
-                      padding: '4px 10px',
-                      height: '42px',
-                      border: 'none'
-                    }}
-                    disabled={!batchId}
-                  >
-                    <MenuItem value="">All Courses</MenuItem>
-                    {courseOptions.map((item, index) => {
-                      return (
-                        <MenuItem value={item.courseId} key={index}>{item.courseName}</MenuItem>
-                      )
-                    })}
-                  </Select>
-                </FormControl>
-              </div>
-              <div className={styles.searchBox}>
-                <TextField
-                  variant="outlined"
-                  size="small"
-                  placeholder="Search here"
-                  value={searchText}
-                  onChange={handleSearchChange}
-                  fullWidth
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <BiSearchAlt style={{ fontSize: 18, color: '#555' }} />
-                      </InputAdornment>
-                    ),
-                    endAdornment: searchText && (
-                      <InputAdornment position="end">
-                        <IconButton onClick={handleClearSearch} edge="end">
-                          <CloseIcon style={{ fontSize: 18 }} />
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                    style: {
-                      backgroundColor: '#fff',
-                      borderRadius: '10px',
-                      height: '42px',
-                      fontSize: '14px',
-                      padding: '4px 10px'
-                    },
-                    notched: false
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      border: '1px solid #e5e7eb',
-                    },
-                    minWidth: 120,
-                    width: '100%',
-                  }}
-                />
-              </div>
-              <div>
-                {(activestatus !== 'active' || status || courseId?.toString().trim() || batchId?.toString().trim()) && (
-                  <button className={styles.clear} onClick={handlefilterSearch} title="Clear filters">
-                    <IoClose />
-                  </button>
-                )}
-
-              </div>
-
+                  <MenuItem value="">All Courses</MenuItem>
+                  {courseOptions.map((item, index) => {
+                    return (
+                      <MenuItem value={item.courseId} key={index}>
+                        {item.courseName}
+                      </MenuItem>
+                    );
+                  })}
+                </Select>
+              </FormControl>
+            </div>
+            <div className={styles.searchBox}>
+              <TextField
+                variant="outlined"
+                size="small"
+                placeholder="Search here"
+                value={searchText}
+                onChange={handleSearchChange}
+                fullWidth
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <BiSearchAlt style={{ fontSize: 18, color: "#555" }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchText && (
+                    <InputAdornment position="end">
+                      <IconButton onClick={handleClearSearch} edge="end">
+                        <CloseIcon style={{ fontSize: 18 }} />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                  style: {
+                    backgroundColor: "#fff",
+                    borderRadius: "10px",
+                    height: "42px",
+                    fontSize: "14px",
+                    padding: "4px 10px",
+                  },
+                  notched: false,
+                }}
+                sx={{
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    border: "1px solid #e5e7eb",
+                  },
+                  minWidth: 120,
+                  width: "100%",
+                }}
+              />
+            </div>
+            <div>
+              {(activestatus !== "active" ||
+                status ||
+                courseId?.toString().trim() ||
+                batchId?.toString().trim()) && (
+                <button
+                  className={styles.clear}
+                  onClick={handlefilterSearch}
+                  title="Clear filters"
+                >
+                  <IoClose />
+                </button>
+              )}
+            </div>
           </div>
 
           <div className={styles.statsRow}>
-            <div className={`${styles.statCard} ${activestatus === '' ? styles.statSelectedTotal : ''}`}>
+            <div
+              className={`${styles.statCard} ${activestatus === "" ? styles.statSelectedTotal : ""}`}
+            >
               <p>Total Students</p>
               {/* Active + inactive always adds up to the total matching every
                   other filter, since status only ever has those two values -
                   see the enum on userModel.status. */}
               <p>{activeCount + inactiveCount}</p>
-              {renderStatViewBtn('', styles.statViewBtnTotal)}
+              {renderStatViewBtn("", styles.statViewBtnTotal)}
             </div>
-            <div className={`${styles.statCard} ${styles.statGreen} ${activestatus === 'active' ? styles.statSelectedGreen : ''}`}>
+            <div
+              className={`${styles.statCard} ${styles.statGreen} ${activestatus === "active" ? styles.statSelectedGreen : ""}`}
+            >
               <p>Active Students</p>
               <p>{activeCount}</p>
-              {renderStatViewBtn('active', styles.statViewBtnGreen)}
+              {renderStatViewBtn("active", styles.statViewBtnGreen)}
             </div>
-            <div className={`${styles.statCard} ${styles.statRed} ${activestatus === 'inactive' ? styles.statSelectedRed : ''}`}>
+            <div
+              className={`${styles.statCard} ${styles.statRed} ${activestatus === "inactive" ? styles.statSelectedRed : ""}`}
+            >
               <p>Inactive Students</p>
               <p>{inactiveCount}</p>
-              {renderStatViewBtn('inactive', styles.statViewBtnRed)}
+              {renderStatViewBtn("inactive", styles.statViewBtnRed)}
             </div>
           </div>
 
@@ -580,13 +597,18 @@ const Studentlist = () => {
                     <th>Batch</th>
                     <th>Active</th>
                     <th>Status</th>
-                    <th className="text-center" colSpan={2}>Action</th>
+                    <th className="text-center" colSpan={2}>
+                      Action
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan="7" className="text-center py-20 text-lg text-gray-500 font-semibold">
+                      <td
+                        colSpan="7"
+                        className="text-center py-20 text-lg text-gray-500 font-semibold"
+                      >
                         <Loader />
                       </td>
                     </tr>
@@ -605,37 +627,51 @@ const Studentlist = () => {
                               }}
                             />
                             <div>
-                              <p className={styles.cellPrimary} style={{ margin: 0 }}>{user.name}</p>
-                              <p className={styles.profileMeta}>{user.studentId}</p>
-                              <p className={styles.profileMeta}>{user.mobileNo}</p>
+                              <p
+                                className={styles.cellPrimary}
+                                style={{ margin: 0 }}
+                              >
+                                {user.name}
+                              </p>
+                              <p className={styles.profileMeta}>
+                                {user.studentId}
+                              </p>
+                              <p className={styles.profileMeta}>
+                                {user.mobileNo}
+                              </p>
                             </div>
                           </div>
                         </td>
                         <td>{user?.courseDetails?.courseName}</td>
-                        <td>{user?.batchDetails?.batchName || '-'}</td>
+                        <td>{user?.batchDetails?.batchName || "-"}</td>
                         <td>
-                          <span className={`${styles.pill} ${user.status === 'active' ? styles.pillActive : styles.pillInactive}`}>
-                            {user?.status || '-'}
+                          <span
+                            className={`${styles.pill} ${user.status === "active" ? styles.pillActive : styles.pillInactive}`}
+                          >
+                            {user?.status || "-"}
                           </span>
                         </td>
                         <td>
                           <span
-                            className={`${styles.pill} ${user.inStatus === 'completed'
-                              ? styles.pillCompleted
-                              : user.inStatus === 'placed'
-                                ? styles.pillPlaced
-                                : user.inStatus === 'ongoing'
-                                  ? styles.pillOngoing
-                                  : styles.pillNeutral
-                              }`}
+                            className={`${styles.pill} ${
+                              user.inStatus === "completed"
+                                ? styles.pillCompleted
+                                : user.inStatus === "placed"
+                                  ? styles.pillPlaced
+                                  : user.inStatus === "ongoing"
+                                    ? styles.pillOngoing
+                                    : styles.pillNeutral
+                            }`}
                           >
-                            {user.inStatus || '-'}
+                            {user.inStatus || "-"}
                           </span>
                         </td>
                         <td>
                           <button
                             className={styles.viewBtn}
-                            onClick={() => navigate(`/students/studentview/${user._id}`)}
+                            onClick={() =>
+                              navigate(`/students/studentview/${user._id}`)
+                            }
                           >
                             <VisibilityIcon fontSize="small" /> View
                           </button>
@@ -654,23 +690,24 @@ const Studentlist = () => {
                   ) : (
                     <tr>
                       <td colSpan="7" className={styles.emptyState}>
-                        <img src={nodata} alt="" width="160" height="160" className="m-auto" />
+                        <img
+                          src={nodata}
+                          alt=""
+                          width="160"
+                          height="160"
+                          className="m-auto"
+                        />
                         <p>No Data Found</p>
                       </td>
                     </tr>
-                )}
-              </tbody>
-
-            </table>
-
+                  )}
+                </tbody>
+              </table>
             </div>
-
           </div>
 
           <div className={styles.footerRow}>
-
-            {totalpages > 0 &&
-
+            {totalpages > 0 && (
               <ThemeProvider theme={theme}>
                 <div className="flex justify-center ">
                   <Pagination
@@ -682,13 +719,12 @@ const Studentlist = () => {
                   />
                 </div>
               </ThemeProvider>
-
-            }
-            {totalpages > 0 &&
+            )}
+            {totalpages > 0 && (
               <p className={styles.pageInfo}>
                 Showing {startIndex} – {endIndex} of {totaluser} students
               </p>
-            }
+            )}
           </div>
         </div>
 
@@ -698,34 +734,36 @@ const Studentlist = () => {
           contentLabel="Add Student"
           style={{
             overlay: {
-              position: 'fixed',
+              position: "fixed",
               top: 0,
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: 'rgba(21, 21, 21, 0.6)',
+              backgroundColor: "rgba(21, 21, 21, 0.6)",
               zIndex: 1000,
             },
             content: {
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              padding: '2rem',
-              backgroundColor: '#fff',
-              borderRadius: '12px',
-              width: 'min(800px, 94vw)',
-              height: 'min(600px, 90vh)',
-              overflow: 'auto',
-              boxShadow: '0 20px 45px rgba(15, 27, 51, 0.25)',
+              position: "fixed",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              padding: "2rem",
+              backgroundColor: "#fff",
+              borderRadius: "12px",
+              width: "min(800px, 94vw)",
+              height: "min(600px, 90vh)",
+              overflow: "auto",
+              boxShadow: "0 20px 45px rgba(15, 27, 51, 0.25)",
               zIndex: 1001,
               fontFamily: '"Poppins", sans-serif',
             },
           }}
         >
-          <Addstudent closeModal={() => setIsOpen(false)} onStudentAdded={getuserlist} />
+          <Addstudent
+            closeModal={() => setIsOpen(false)}
+            onStudentAdded={getuserlist}
+          />
         </Modal>
-
 
         <Modal
           isOpen={deleteOpen}
@@ -733,43 +771,56 @@ const Studentlist = () => {
           contentLabel="Delete Student"
           style={{
             overlay: {
-              position: 'fixed',
+              position: "fixed",
               top: 0,
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: 'rgba(21, 21, 21, 0.6)',
+              backgroundColor: "rgba(21, 21, 21, 0.6)",
               zIndex: 1000,
             },
             content: {
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              padding: '2.5rem',
-              backgroundColor: '#fff',
-              borderRadius: '12px',
-              width: 'min(360px, 92vw)',
-              height: 'max-content',
-              overflow: 'auto',
-              boxShadow: '0 20px 45px rgba(15, 27, 51, 0.25)',
+              position: "fixed",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              padding: "2.5rem",
+              backgroundColor: "#fff",
+              borderRadius: "12px",
+              width: "min(360px, 92vw)",
+              height: "max-content",
+              overflow: "auto",
+              boxShadow: "0 20px 45px rgba(15, 27, 51, 0.25)",
               zIndex: 1001,
               fontFamily: '"Poppins", sans-serif',
             },
           }}
         >
           {/* <Addstudent closeModal={() => setIsOpen(false)} onStudentAdded={getuserlist} /> */}
-          <p className={styles.popmessage}>Are you sure you want to delete this student</p>
-          <div className='flex gap-4 justify-center mt-10'>
-            <button onClick={() => { setDeleteOpen(false); handleDelete(id) }}
-              className={styles.popyes} >Yes</button>
-            <button className={styles.popno} onClick={() => setDeleteOpen(false)}>No</button>
+          <p className={styles.popmessage}>
+            Are you sure you want to delete this student
+          </p>
+          <div className="flex gap-4 justify-center mt-10">
+            <button
+              onClick={() => {
+                setDeleteOpen(false);
+                handleDelete(id);
+              }}
+              className={styles.popyes}
+            >
+              Yes
+            </button>
+            <button
+              className={styles.popno}
+              onClick={() => setDeleteOpen(false)}
+            >
+              No
+            </button>
           </div>
         </Modal>
-
       </div>
     </>
-  )
+  );
 }
 
 export default Studentlist

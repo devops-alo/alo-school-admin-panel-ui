@@ -22,6 +22,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
+import { hasActionAccess } from "../utils/permissions";
 
 dayjs.extend(customParseFormat);
 
@@ -203,6 +204,11 @@ const emptyForm = (tab) =>
   }, {});
 
 const TaskSettings = () => {
+  const canView = hasActionAccess("/tasks", "view");
+  const canAdd = hasActionAccess("/tasks", "add");
+  const canEdit = hasActionAccess("/tasks", "edit");
+  const canDelete = hasActionAccess("/tasks", "delete");
+  const canShowActions = canEdit || canDelete;
   const [activeKey, setActiveKey] = useState(TABS[0].key);
   const [rows, setRows] = useState({});
   const [loading, setLoading] = useState(true);
@@ -329,6 +335,7 @@ const TaskSettings = () => {
   }, [activeKey, rows.subject, courses]);
 
   const openAdd = () => {
+     if (!canAdd) return;
     setEditing(null);
     setForm(emptyForm(activeTab));
     setMultiValues([emptyMultiRow]);
@@ -337,6 +344,7 @@ const TaskSettings = () => {
   };
 
   const openEdit = (row) => {
+    if (!canEdit) return;
     setEditing(row);
     setForm(
       activeTab.deserialize
@@ -444,6 +452,8 @@ const TaskSettings = () => {
   const removeRow = (id) => activeTab.api.remove(id);
 
   const handleSave = async () => {
+     if (editing ? !canEdit : !canAdd) return;
+
     if (!validate()) return;
 
     /* Adding several subjects at once — one create call per name (each with
@@ -544,12 +554,14 @@ const TaskSettings = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   const handleDelete = (row) => {
+     if (!canDelete) return;
     setDeleteTarget(row);
   };
 
   const cancelDelete = () => setDeleteTarget(null);
 
   const confirmDelete = async () => {
+      if (!canDelete) return;
     const row = deleteTarget;
     if (!row) return;
 
@@ -626,7 +638,7 @@ const TaskSettings = () => {
               <p className={styles.panelHint}>{activeTab.hint}</p>
             </div>
 
-            {activeTab.canAdd !== false && (
+            {canAdd && activeTab.canAdd !== false && (
               <button className={styles.addBtn} onClick={openAdd}>
                 <FiPlus />
                 {activeTab.addLabel}
@@ -641,7 +653,10 @@ const TaskSettings = () => {
                   const isOpen = expandedCourses[course.courseId] === true;
 
                   return (
-                    <div key={course.courseId} className={styles.accordionGroup}>
+                    <div
+                      key={course.courseId}
+                      className={styles.accordionGroup}
+                    >
                       <button
                         type="button"
                         className={styles.accordionHeader}
@@ -653,16 +668,23 @@ const TaskSettings = () => {
                               isOpen ? styles.accordionChevronOpen : ""
                             }`}
                           />
-                          <span className={styles.accordionTitle}>{course.courseName}</span>
+                          <span className={styles.accordionTitle}>
+                            {course.courseName}
+                          </span>
                         </span>
 
-                        <span className={styles.tabCount}>{course.subjectCount}</span>
+                        <span className={styles.tabCount}>
+                          {course.subjectCount}
+                        </span>
                       </button>
 
                       {isOpen && (
                         <div className={styles.accordionBody}>
                           {course.semesters.map((semGroup) => (
-                            <div key={semGroup.sem} className={styles.semesterGroup}>
+                            <div
+                              key={semGroup.sem}
+                              className={styles.semesterGroup}
+                            >
                               <p className={styles.semesterLabel}>
                                 {semGroup.sem === "__unassigned__"
                                   ? "Unassigned Semester"
@@ -670,7 +692,10 @@ const TaskSettings = () => {
                               </p>
 
                               {semGroup.subjects.map((row) => (
-                                <div key={row._id} className={styles.subjectRow}>
+                                <div
+                                  key={row._id}
+                                  className={styles.subjectRow}
+                                >
                                   <span className={styles.subjectName}>
                                     {row.label}
                                     <span className={styles.subjectMarks}>
@@ -679,21 +704,25 @@ const TaskSettings = () => {
                                   </span>
 
                                   <div className={styles.rowActions}>
-                                    <button
-                                      className={styles.iconBtn}
-                                      onClick={() => openEdit(row)}
-                                      aria-label="Edit"
-                                    >
-                                      <FiEdit2 />
-                                    </button>
+                                    {canEdit && (
+                                      <button
+                                        className={styles.iconBtn}
+                                        onClick={() => openEdit(row)}
+                                        aria-label="Edit"
+                                      >
+                                        <FiEdit2 />
+                                      </button>
+                                    )}
 
-                                    <button
-                                      className={`${styles.iconBtn} ${styles.deleteBtn}`}
-                                      onClick={() => handleDelete(row)}
-                                      aria-label="Delete"
-                                    >
-                                      <FiTrash2 />
-                                    </button>
+                                    {canDelete && (
+                                      <button
+                                        className={`${styles.iconBtn} ${styles.deleteBtn}`}
+                                        onClick={() => handleDelete(row)}
+                                        aria-label="Delete"
+                                      >
+                                        <FiTrash2 />
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
                               ))}
@@ -719,7 +748,7 @@ const TaskSettings = () => {
                     {activeTab.columns.map((column) => (
                       <th key={column.key}>{column.label}</th>
                     ))}
-                    <th>Actions</th>
+                    {canShowActions && <th>Actions</th>}
                   </tr>
                 </thead>
 
@@ -745,37 +774,45 @@ const TaskSettings = () => {
                           </td>
                         ))}
 
-                        <td>
-                          <div className={styles.rowActions}>
-                            <button
-                              className={styles.iconBtn}
-                              onClick={() => openEdit(row)}
-                              aria-label="Edit"
-                            >
-                              <FiEdit2 />
-                            </button>
+                        {canShowActions && (
+                          <td>
+                            <div className={styles.rowActions}>
+                              {canEdit && (
+                                <button
+                                  className={styles.iconBtn}
+                                  onClick={() => openEdit(row)}
+                                  aria-label="Edit"
+                                >
+                                  <FiEdit2 />
+                                </button>
+                              )}
 
-                            {activeTab.canDelete !== false && (
-                              <button
-                                className={`${styles.iconBtn} ${styles.deleteBtn}`}
-                                onClick={() => handleDelete(row)}
-                                aria-label="Delete"
-                              >
-                                <FiTrash2 />
-                              </button>
-                            )}
-                          </div>
-                        </td>
+                              {canDelete && activeTab.canDelete !== false && (
+                                <button
+                                  className={`${styles.iconBtn} ${styles.deleteBtn}`}
+                                  onClick={() => handleDelete(row)}
+                                  aria-label="Delete"
+                                >
+                                  <FiTrash2 />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))
                   ) : (
                     <tr>
                       <td
-                        colSpan={activeTab.columns.length + 1}
+                        colSpan={
+                          activeTab.columns.length + (canShowActions ? 1 : 0)
+                        }
                         className={styles.noData}
                       >
                         <div className={styles.emptyState}>
-                          <span className={styles.emptyIcon}>{activeTab.icon}</span>
+                          <span className={styles.emptyIcon}>
+                            {activeTab.icon}
+                          </span>
                           <p className={styles.emptyTitle}>
                             No {activeTab.label} Settings Found
                           </p>
@@ -808,202 +845,240 @@ const TaskSettings = () => {
             </div>
 
             <LocalizationProvider dateAdapter={AdapterDayjs}>
-            <div className={styles.modalBody}>
-              {isMultiAddMode && (
-                <div className={styles.field}>
-                  <label className={styles.label}>
-                    Subject Names<span className={styles.required}> *</span>
-                  </label>
+              <div className={styles.modalBody}>
+                {isMultiAddMode && (
+                  <div className={styles.field}>
+                    <label className={styles.label}>
+                      Subject Names<span className={styles.required}> *</span>
+                    </label>
 
-                  <div className={styles.multiNameList}>
-                    {multiValues.map((row, index) => (
-                      <div key={index} className={styles.multiNameRow}>
-                        <input
-                          className={styles.input}
-                          type="text"
-                          autoComplete="off"
-                          placeholder={`Subject ${index + 1} name`}
-                          value={row.name}
-                          onChange={(event) => updateMultiValue(index, "name", event.target.value)}
-                        />
-                        <input
-                          className={`${styles.input} ${styles.multiMarksInput}`}
-                          type="number"
-                          min="1"
-                          autoComplete="off"
-                          placeholder="Marks"
-                          title="Total marks"
-                          value={row.totalMarks}
-                          onChange={(event) => updateMultiValue(index, "totalMarks", event.target.value)}
-                        />
-                        <button
-                          type="button"
-                          className={styles.iconBtn}
-                          aria-label="Remove"
-                          onClick={() => removeMultiRow(index)}
-                        >
-                          <FiX />
-                        </button>
-                      </div>
-                    ))}
+                    <div className={styles.multiNameList}>
+                      {multiValues.map((row, index) => (
+                        <div key={index} className={styles.multiNameRow}>
+                          <input
+                            className={styles.input}
+                            type="text"
+                            autoComplete="off"
+                            placeholder={`Subject ${index + 1} name`}
+                            value={row.name}
+                            onChange={(event) =>
+                              updateMultiValue(
+                                index,
+                                "name",
+                                event.target.value,
+                              )
+                            }
+                          />
+                          <input
+                            className={`${styles.input} ${styles.multiMarksInput}`}
+                            type="number"
+                            min="1"
+                            autoComplete="off"
+                            placeholder="Marks"
+                            title="Total marks"
+                            value={row.totalMarks}
+                            onChange={(event) =>
+                              updateMultiValue(
+                                index,
+                                "totalMarks",
+                                event.target.value,
+                              )
+                            }
+                          />
+                          <button
+                            type="button"
+                            className={styles.iconBtn}
+                            aria-label="Remove"
+                            onClick={() => removeMultiRow(index)}
+                          >
+                            <FiX />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      className={styles.addAnotherBtn}
+                      onClick={addMultiRow}
+                    >
+                      <FiPlus /> Add Another Subject
+                    </button>
+
+                    {errors[activeTab.multiAddKey] && (
+                      <span className={styles.errorText}>
+                        {errors[activeTab.multiAddKey]}
+                      </span>
+                    )}
                   </div>
+                )}
 
-                  <button type="button" className={styles.addAnotherBtn} onClick={addMultiRow}>
-                    <FiPlus /> Add Another Subject
-                  </button>
+                {activeTab.fields
+                  .filter(
+                    (field) =>
+                      !(
+                        isMultiAddMode &&
+                        (field.key === activeTab.multiAddKey ||
+                          field.key === "totalMarks")
+                      ),
+                  )
+                  .map((field) => (
+                    <div
+                      key={field.key}
+                      className={`${styles.field} ${
+                        field.type === "time" ? styles.fieldHalf : ""
+                      }`}
+                    >
+                      <label className={styles.label} htmlFor={field.key}>
+                        {field.label}
+                        {field.required && (
+                          <span className={styles.required}> *</span>
+                        )}
+                      </label>
 
-                  {errors[activeTab.multiAddKey] && (
-                    <span className={styles.errorText}>{errors[activeTab.multiAddKey]}</span>
-                  )}
-                </div>
-              )}
-
-              {activeTab.fields
-                .filter(
-                  (field) =>
-                    !(isMultiAddMode && (field.key === activeTab.multiAddKey || field.key === "totalMarks")),
-                )
-                .map((field) => (
-                <div
-                  key={field.key}
-                  className={`${styles.field} ${
-                    field.type === "time" ? styles.fieldHalf : ""
-                  }`}
-                >
-                  <label className={styles.label} htmlFor={field.key}>
-                    {field.label}
-                    {field.required && <span className={styles.required}> *</span>}
-                  </label>
-
-                  {field.type === "time" ? (
-                    <TimePicker
-                      value={form[field.key] || null}
-                      onChange={(value) =>
-                        setForm((current) => ({
-                          ...current,
-                          [field.key]: value,
-                        }))
-                      }
-                      ampm
-                      format="h:mm A"
-                      minutesStep={5}
-                      slotProps={{
-                        textField: {
-                          id: field.key,
-                          fullWidth: true,
-                          error: Boolean(errors[field.key]),
-                          sx: {
-                            "& .MuiPickersOutlinedInput-root, & .MuiOutlinedInput-root":
-                              {
-                                height: "44px",
-                                borderRadius: "10px",
-                                fontFamily: "inherit",
-                                fontSize: "14px",
+                      {field.type === "time" ? (
+                        <TimePicker
+                          value={form[field.key] || null}
+                          onChange={(value) =>
+                            setForm((current) => ({
+                              ...current,
+                              [field.key]: value,
+                            }))
+                          }
+                          ampm
+                          format="h:mm A"
+                          minutesStep={5}
+                          slotProps={{
+                            textField: {
+                              id: field.key,
+                              fullWidth: true,
+                              error: Boolean(errors[field.key]),
+                              sx: {
+                                "& .MuiPickersOutlinedInput-root, & .MuiOutlinedInput-root":
+                                  {
+                                    height: "44px",
+                                    borderRadius: "10px",
+                                    fontFamily: "inherit",
+                                    fontSize: "14px",
+                                  },
                               },
-                          },
-                        },
-                      }}
-                    />
-                  ) : field.type === "single-dropdown" ? (
-                    (() => {
-                      const dropdownOptions =
-                        field.options || courses.map((c) => ({ value: c._id, label: c.courseName }));
-                      return (
-                        <select
+                            },
+                          }}
+                        />
+                      ) : field.type === "single-dropdown" ? (
+                        (() => {
+                          const dropdownOptions =
+                            field.options ||
+                            courses.map((c) => ({
+                              value: c._id,
+                              label: c.courseName,
+                            }));
+                          return (
+                            <select
+                              id={field.key}
+                              className={`${styles.input} ${
+                                errors[field.key] ? styles.inputError : ""
+                              }`}
+                              value={(form[field.key] || [])[0] || ""}
+                              onChange={(event) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  [field.key]: event.target.value
+                                    ? [event.target.value]
+                                    : [],
+                                }))
+                              }
+                            >
+                              <option value="">{`Select ${field.label}`}</option>
+                              {dropdownOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          );
+                        })()
+                      ) : field.type === "radio" ? (
+                        <div
                           id={field.key}
+                          className={`${styles.checkboxGroup} ${
+                            errors[field.key] ? styles.inputError : ""
+                          }`}
+                        >
+                          {(field.options || []).map((option) => {
+                            const selected =
+                              (form[field.key] || [])[0] === option.value;
+                            return (
+                              <label
+                                key={option.value}
+                                className={styles.checkboxOption}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`${activeTab.key}-${field.key}`}
+                                  checked={selected}
+                                  onChange={() =>
+                                    setForm((current) => ({
+                                      ...current,
+                                      [field.key]: [option.value],
+                                    }))
+                                  }
+                                />
+                                {option.label}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <input
+                          id={field.key}
+                          name={`${activeTab.key}-${field.key}`}
+                          autoComplete="off"
                           className={`${styles.input} ${
                             errors[field.key] ? styles.inputError : ""
                           }`}
-                          value={(form[field.key] || [])[0] || ""}
+                          type={field.type}
+                          min={field.min}
+                          placeholder={field.placeholder || ""}
+                          value={form[field.key] ?? ""}
                           onChange={(event) =>
                             setForm((current) => ({
                               ...current,
-                              [field.key]: event.target.value ? [event.target.value] : [],
+                              [field.key]: event.target.value,
                             }))
                           }
-                        >
-                          <option value="">{`Select ${field.label}`}</option>
-                          {dropdownOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      );
-                    })()
-                  ) : field.type === "radio" ? (
-                    <div
-                      id={field.key}
-                      className={`${styles.checkboxGroup} ${
-                        errors[field.key] ? styles.inputError : ""
-                      }`}
-                    >
-                      {(field.options || []).map((option) => {
-                        const selected = (form[field.key] || [])[0] === option.value;
-                        return (
-                          <label key={option.value} className={styles.checkboxOption}>
-                            <input
-                              type="radio"
-                              name={`${activeTab.key}-${field.key}`}
-                              checked={selected}
-                              onChange={() =>
-                                setForm((current) => ({
-                                  ...current,
-                                  [field.key]: [option.value],
-                                }))
-                              }
-                            />
-                            {option.label}
-                          </label>
-                        );
-                      })}
+                        />
+                      )}
+
+                      {errors[field.key] && (
+                        <span className={styles.errorText}>
+                          {errors[field.key]}
+                        </span>
+                      )}
                     </div>
-                  ) : (
-                    <input
-                      id={field.key}
-                      name={`${activeTab.key}-${field.key}`}
-                      autoComplete="off"
-                      className={`${styles.input} ${
-                        errors[field.key] ? styles.inputError : ""
-                      }`}
-                      type={field.type}
-                      min={field.min}
-                      placeholder={field.placeholder || ""}
-                      value={form[field.key] ?? ""}
-                      onChange={(event) =>
-                        setForm((current) => ({
-                          ...current,
-                          [field.key]: event.target.value,
-                        }))
-                      }
-                    />
-                  )}
+                  ))}
 
-                  {errors[field.key] && (
-                    <span className={styles.errorText}>
-                      {errors[field.key]}
-                    </span>
+                {activeTab.key === "time" &&
+                  form.startTime &&
+                  form.endTime &&
+                  dayjs(form.startTime).isValid() &&
+                  dayjs(form.endTime).isValid() && (
+                    <p className={styles.previewText}>
+                      Saved as{" "}
+                      <strong>
+                        {buildSlotLabel(form.startTime, form.endTime)}
+                      </strong>
+                    </p>
                   )}
-                </div>
-              ))}
-
-              {activeTab.key === "time" &&
-                form.startTime &&
-                form.endTime &&
-                dayjs(form.startTime).isValid() &&
-                dayjs(form.endTime).isValid() && (
-                  <p className={styles.previewText}>
-                    Saved as{" "}
-                    <strong>
-                      {buildSlotLabel(form.startTime, form.endTime)}
-                    </strong>
-                  </p>
-                )}
-            </div>
+              </div>
             </LocalizationProvider>
 
             <div className={styles.modalFooter}>
-              <button className={styles.cancelBtn} onClick={closeModal} disabled={saving}>
+              <button
+                className={styles.cancelBtn}
+                onClick={closeModal}
+                disabled={saving}
+              >
                 Cancel
               </button>
 
@@ -1051,7 +1126,10 @@ const TaskSettings = () => {
                 Cancel
               </button>
 
-              <button className={styles.dangerConfirmBtn} onClick={confirmDelete}>
+              <button
+                className={styles.dangerConfirmBtn}
+                onClick={confirmDelete}
+              >
                 Delete
               </button>
             </div>

@@ -6,6 +6,7 @@ import Pagination from "@mui/material/Pagination";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { toast } from "react-toastify";
 import InboxOutlinedIcon from "@mui/icons-material/InboxOutlined";
+import { hasActionAccess } from "../utils/permissions";
 
 const theme = createTheme({
   components: {
@@ -40,6 +41,8 @@ const Harassement = () => {
 
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const canView = hasActionAccess("/harassment", "view");
+  const canEdit = hasActionAccess("/harassment", "edit");
 
   useEffect(() => {
     fetchHarassment(page);
@@ -91,6 +94,9 @@ const Harassement = () => {
   const isLongMessage = (message) => (message?.length || 0) > 100;
 
   const handleMarkAsRead = async (id) => {
+    if (!canEdit || markingReadId) return;
+
+    if (markingReadId) return;
     setMarkingReadId(id);
     try {
       await markHarassmentAsRead(id);
@@ -115,6 +121,10 @@ const Harassement = () => {
 
   const startIndex = total === 0 ? 0 : (page - 1) * limit + 1;
   const endIndex = Math.min(page * limit, total);
+
+  if (!canView) {
+    return <div>You don't have permission to view harassment reports.</div>;
+  }
 
   return (
     <div className={styles.container}>
@@ -161,7 +171,9 @@ const Harassement = () => {
                               className={styles.showMoreBtn}
                               onClick={() => toggleExpanded(item._id)}
                             >
-                              {expandedIds.has(item._id) ? "Show less" : "Show more"}
+                              {expandedIds.has(item._id)
+                                ? "Show less"
+                                : "Show more"}
                             </button>
                           )}
                         </td>
@@ -170,13 +182,70 @@ const Harassement = () => {
                           {item.isRead ? (
                             <span className={styles.readStatus}>Read</span>
                           ) : (
-                            <button
-                              className={styles.readBtn}
-                              onClick={() => handleMarkAsRead(item._id)}
-                              disabled={markingReadId === item._id}
+                            <div
+                              style={{
+                                position: "relative",
+                                display: "inline-block",
+                              }}
                             >
-                              {markingReadId === item._id ? "Marking..." : "Mark as Read"}
-                            </button>
+                              <button
+                                type="button"
+                                className={styles.readBtn}
+                                style={{
+                                  opacity: canEdit ? 1 : 0.55,
+                                  cursor: canEdit ? "pointer" : "not-allowed",
+                                }}
+                                onClick={() => {
+                                  if (!canEdit) return;
+                                  handleMarkAsRead(item._id);
+                                }}
+                                disabled={markingReadId === item._id}
+                                onMouseEnter={(e) => {
+                                  if (!canEdit) {
+                                    e.currentTarget.nextElementSibling.style.visibility =
+                                      "visible";
+                                    e.currentTarget.nextElementSibling.style.opacity =
+                                      "1";
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (!canEdit) {
+                                    e.currentTarget.nextElementSibling.style.visibility =
+                                      "hidden";
+                                    e.currentTarget.nextElementSibling.style.opacity =
+                                      "0";
+                                  }
+                                }}
+                              >
+                                {markingReadId === item._id
+                                  ? "Marking..."
+                                  : "Mark as Read"}
+                              </button>
+
+                              {!canEdit && (
+                                <span
+                                  style={{
+                                    position: "absolute",
+                                    top: "calc(100% + 5px)",
+                                    left: "50%",
+                                    transform: "translateX(-50%)",
+                                    background: "#1f2937",
+                                    color: "#fff",
+                                    padding: "5px 8px",
+                                    borderRadius: "4px",
+                                    fontSize: "11px",
+                                    whiteSpace: "nowrap",
+                                    visibility: "hidden",
+                                    opacity: 0,
+                                    transition: "opacity 0.15s",
+                                    zIndex: 10,
+                                    pointerEvents: "none",
+                                  }}
+                                >
+                                  You don't have access to edit
+                                </span>
+                              )}
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -184,8 +253,12 @@ const Harassement = () => {
                   ) : (
                     <tr>
                       <td colSpan="5" className={styles.noData}>
-                        <InboxOutlinedIcon sx={{ fontSize: 32, color: "#c2c8d4" }} />
-                        <p className={styles.noDataText}>No Harassment Reports Found</p>
+                        <InboxOutlinedIcon
+                          sx={{ fontSize: 32, color: "#c2c8d4" }}
+                        />
+                        <p className={styles.noDataText}>
+                          No Harassment Reports Found
+                        </p>
                       </td>
                     </tr>
                   )}

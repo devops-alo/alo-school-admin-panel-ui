@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Modal from "../../components/modal/Modal";
 import styles from "../CourseDetails/courseForms.module.css";
 import { PlusIcon, TrashIcon } from "../../components/icons/Icons";
+import { hasActionAccess } from "../utils/permissions";
 
 const EMPTY_FORM = {
   batchName: "",
@@ -47,6 +48,11 @@ const CreateBatchModal = ({ open, onClose, onSave, courses, batchData }) => {
   const [rows, setRows] = useState([{ ...EMPTY_ROW }]);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const canAdd = hasActionAccess("/batch", "add");
+  const canEdit = hasActionAccess("/batch", "edit");
+  const canDelete = hasActionAccess("/batch", "delete");
+
+  const canModifyBatch = batchData ? canEdit : canAdd;
 
   useEffect(() => {
     if (!open) return;
@@ -168,6 +174,9 @@ const CreateBatchModal = ({ open, onClose, onSave, courses, batchData }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canModifyBatch) {
+      return;
+    }
 
     const newErrors = validate();
     setErrors(newErrors);
@@ -215,7 +224,9 @@ const CreateBatchModal = ({ open, onClose, onSave, courses, batchData }) => {
     <Modal open={open} title={title} onClose={onClose} width={900}>
       <form className={styles.form} onSubmit={handleSubmit} noValidate>
         <div className={styles.grid}>
-          <div className={`${styles.group} ${errors.batchName ? styles.invalid : ""}`}>
+          <div
+            className={`${styles.group} ${errors.batchName ? styles.invalid : ""}`}
+          >
             <label htmlFor="batchName">
               Batch Name<span className={styles.required}>*</span>
             </label>
@@ -229,7 +240,9 @@ const CreateBatchModal = ({ open, onClose, onSave, courses, batchData }) => {
             <p className={styles.error}>{errors.batchName}</p>
           </div>
 
-          <div className={`${styles.group} ${errors.admissionFee ? styles.invalid : ""}`}>
+          <div
+            className={`${styles.group} ${errors.admissionFee ? styles.invalid : ""}`}
+          >
             <label htmlFor="admissionFee">
               Admission Fee (₹)<span className={styles.required}>*</span>
             </label>
@@ -244,7 +257,9 @@ const CreateBatchModal = ({ open, onClose, onSave, courses, batchData }) => {
             <p className={styles.error}>{errors.admissionFee}</p>
           </div>
 
-          <div className={`${styles.group} ${errors.startDate ? styles.invalid : ""}`}>
+          <div
+            className={`${styles.group} ${errors.startDate ? styles.invalid : ""}`}
+          >
             <label htmlFor="startDate">
               Start Date<span className={styles.required}>*</span>
             </label>
@@ -257,7 +272,9 @@ const CreateBatchModal = ({ open, onClose, onSave, courses, batchData }) => {
             <p className={styles.error}>{errors.startDate}</p>
           </div>
 
-          <div className={`${styles.group} ${errors.endDate ? styles.invalid : ""}`}>
+          <div
+            className={`${styles.group} ${errors.endDate ? styles.invalid : ""}`}
+          >
             <label htmlFor="endDate">
               End Date<span className={styles.required}>*</span>
             </label>
@@ -270,7 +287,9 @@ const CreateBatchModal = ({ open, onClose, onSave, courses, batchData }) => {
             <p className={styles.error}>{errors.endDate}</p>
           </div>
 
-          <div className={`${styles.group} ${errors.classStartIn ? styles.invalid : ""}`}>
+          <div
+            className={`${styles.group} ${errors.classStartIn ? styles.invalid : ""}`}
+          >
             <label htmlFor="classStartIn">
               Class Start Time<span className={styles.required}>*</span>
             </label>
@@ -283,7 +302,9 @@ const CreateBatchModal = ({ open, onClose, onSave, courses, batchData }) => {
             <p className={styles.error}>{errors.classStartIn}</p>
           </div>
 
-          <div className={`${styles.group} ${errors.classEndIn ? styles.invalid : ""}`}>
+          <div
+            className={`${styles.group} ${errors.classEndIn ? styles.invalid : ""}`}
+          >
             <label htmlFor="classEndIn">
               Class End Time<span className={styles.required}>*</span>
             </label>
@@ -296,7 +317,9 @@ const CreateBatchModal = ({ open, onClose, onSave, courses, batchData }) => {
             <p className={styles.error}>{errors.classEndIn}</p>
           </div>
 
-          <div className={`${styles.group} ${errors.sem1FeeDate ? styles.invalid : ""}`}>
+          <div
+            className={`${styles.group} ${errors.sem1FeeDate ? styles.invalid : ""}`}
+          >
             <label htmlFor="sem1FeeDate">
               Semester 1 Fee Date<span className={styles.required}>*</span>
             </label>
@@ -309,7 +332,9 @@ const CreateBatchModal = ({ open, onClose, onSave, courses, batchData }) => {
             <p className={styles.error}>{errors.sem1FeeDate}</p>
           </div>
 
-          <div className={`${styles.group} ${errors.sem2FeeDate ? styles.invalid : ""}`}>
+          <div
+            className={`${styles.group} ${errors.sem2FeeDate ? styles.invalid : ""}`}
+          >
             <label htmlFor="sem2FeeDate">
               Semester 2 Fee Date<span className={styles.required}>*</span>
             </label>
@@ -328,10 +353,12 @@ const CreateBatchModal = ({ open, onClose, onSave, courses, batchData }) => {
           <h3>
             Course List<span className={styles.required}>*</span>
           </h3>
-          <button type="button" className={styles.addRowBtn} onClick={addRow}>
-            <PlusIcon width={15} height={15} />
-            Add Course
-          </button>
+          {canModifyBatch && (
+            <button type="button" className={styles.addRowBtn} onClick={addRow}>
+              <PlusIcon width={15} height={15} />
+              Add Course
+            </button>
+          )}
         </div>
 
         <div className={styles.courseRows}>
@@ -354,7 +381,9 @@ const CreateBatchModal = ({ open, onClose, onSave, courses, batchData }) => {
             <div key={i} className={styles.courseRow}>
               <span className={styles.rowIndex}>{i + 1}</span>
 
-              <div className={`${styles.rowField} ${errors[`row-${i}-courseId`] ? styles.invalid : ""}`}>
+              <div
+                className={`${styles.rowField} ${errors[`row-${i}-courseId`] ? styles.invalid : ""}`}
+              >
                 <select
                   aria-label={`Course ${i + 1}`}
                   value={row.courseId}
@@ -370,7 +399,9 @@ const CreateBatchModal = ({ open, onClose, onSave, courses, batchData }) => {
                 <p className={styles.error}>{errors[`row-${i}-courseId`]}</p>
               </div>
 
-              <div className={`${styles.rowField} ${errors[`row-${i}-sem1Amount`] ? styles.invalid : ""}`}>
+              <div
+                className={`${styles.rowField} ${errors[`row-${i}-sem1Amount`] ? styles.invalid : ""}`}
+              >
                 <input
                   type="text"
                   inputMode="numeric"
@@ -382,7 +413,9 @@ const CreateBatchModal = ({ open, onClose, onSave, courses, batchData }) => {
                 <p className={styles.error}>{errors[`row-${i}-sem1Amount`]}</p>
               </div>
 
-              <div className={`${styles.rowField} ${errors[`row-${i}-sem2Amount`] ? styles.invalid : ""}`}>
+              <div
+                className={`${styles.rowField} ${errors[`row-${i}-sem2Amount`] ? styles.invalid : ""}`}
+              >
                 <input
                   type="text"
                   inputMode="numeric"
@@ -395,17 +428,21 @@ const CreateBatchModal = ({ open, onClose, onSave, courses, batchData }) => {
               </div>
 
               <span className={styles.rowTotal}>
-                {rowTotal(row) > 0 ? rowTotal(row).toLocaleString("en-IN") : "—"}
+                {rowTotal(row) > 0
+                  ? rowTotal(row).toLocaleString("en-IN")
+                  : "—"}
               </span>
 
-              <button
-                type="button"
-                className={styles.rowDelete}
-                aria-label={`Remove course ${i + 1}`}
-                onClick={() => removeRow(i)}
-              >
-                <TrashIcon width={16} height={16} />
-              </button>
+              {canDelete && (
+                <button
+                  type="button"
+                  className={styles.rowDelete}
+                  aria-label={`Remove course ${i + 1}`}
+                  onClick={() => removeRow(i)}
+                >
+                  <TrashIcon width={16} height={16} />
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -419,15 +456,21 @@ const CreateBatchModal = ({ open, onClose, onSave, courses, batchData }) => {
           >
             Cancel
           </button>
-          <button type="submit" className={styles.submitBtn} disabled={saving}>
-            {saving
-              ? batchData
-                ? "Saving..."
-                : "Creating..."
-              : batchData
-                ? "Save Changes"
-                : "Create Batch"}
-          </button>
+          {canModifyBatch && (
+            <button
+              type="submit"
+              className={styles.submitBtn}
+              disabled={saving}
+            >
+              {saving
+                ? batchData
+                  ? "Saving..."
+                  : "Creating..."
+                : batchData
+                  ? "Save Changes"
+                  : "Create Batch"}
+            </button>
+          )}
         </div>
       </form>
     </Modal>

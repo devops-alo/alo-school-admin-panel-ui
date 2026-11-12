@@ -26,6 +26,7 @@ import Pagination from "@mui/material/Pagination";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import listStyles from "../Studentlist/Studentlist.module.css";
 import styles from "./Placement.module.css";
+import { hasActionAccess } from "../utils/permissions";
 
 const selectSx = {
   minWidth: 130,
@@ -116,7 +117,11 @@ const PlacementList = () => {
   const [rejectedCount, setRejectedCount] = useState(0);
   const [highestPackage, setHighestPackage] = useState(0);
   const [topCompanies, setTopCompanies] = useState([]);
-
+  const canView = hasActionAccess("/placement", "view");
+  const canAdd = hasActionAccess("/placement", "add");
+  const canEdit = hasActionAccess("/placement", "edit");
+  const canDelete = hasActionAccess("/placement", "delete");
+  const canShowActions = canEdit || canDelete;
   const totalPages = Math.ceil(total / limit);
 
   const fetchPlacements = async () => {
@@ -275,11 +280,13 @@ const PlacementList = () => {
   };
 
   const openCreate = () => {
+    if (!canAdd) return;
     setEditing(null);
     setModalOpen(true);
   };
 
   const openEdit = (placement) => {
+    if (!canEdit) return;
     setEditing(placement);
     setModalOpen(true);
   };
@@ -289,26 +296,33 @@ const PlacementList = () => {
     setEditing(null);
   };
 
-  const handleSave = async (payload) => {
-    try {
-      if (payload.id) {
-        await updatePlacement(payload.id, payload);
-        toast.success("Placement updated successfully");
-      } else {
-        await addPlacement(payload);
-        toast.success("Placement added successfully");
-      }
-      setOffset(1);
-      fetchPlacements();
-      fetchSummary();
-    } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to save placement");
-      throw err;
-    }
-  };
+ const handleSave = async (payload) => {
+   // Check permission before calling the API
+   if (payload.id ? !canEdit : !canAdd) {
+     toast.error("You don't have permission to perform this action");
+     return;
+   }
+
+   try {
+     if (payload.id) {
+       await updatePlacement(payload.id, payload);
+       toast.success("Placement updated successfully");
+     } else {
+       await addPlacement(payload);
+       toast.success("Placement added successfully");
+     }
+
+     setOffset(1);
+     await fetchPlacements();
+     await fetchSummary();
+   } catch (err) {
+     toast.error(err?.response?.data?.message || "Failed to save placement");
+     throw err;
+   }
+ };
 
   const confirmDelete = async () => {
-    if (!deleting) return;
+    if (!canDelete || !deleting) return;
     setDeleteLoading(true);
     try {
       await deletePlacement(deleting._id || deleting.id);
@@ -349,15 +363,23 @@ const PlacementList = () => {
     cumulative += share * CIRCUMFERENCE;
     return arc;
   });
-
+  if (!canView) {
+    return <div>You don't have permission to view placements.</div>;
+  }
   return (
     <div className={listStyles.container}>
       <div className={styles.titleRow}>
         <h4 className={listStyles.heading}>Placement Management</h4>
-        <button type="button" className={listStyles.primaryBtn} onClick={openCreate}>
-          <PlusIcon width={16} height={16} />
-          Add Placement
-        </button>
+        {canAdd && (
+          <button
+            type="button"
+            className={listStyles.primaryBtn}
+            onClick={openCreate}
+          >
+            <PlusIcon width={16} height={16} />
+            Add Placement
+          </button>
+        )}
       </div>
 
       <div className={styles.statsRow}>
@@ -406,7 +428,9 @@ const PlacementList = () => {
         <div className={styles.statTile}>
           <div className={`${styles.statIcon} ${styles.statIconPurple}`}>₹</div>
           <div>
-            <p className={styles.statValue}>{highestPackage ? `₹${highestPackage}` : "-"}</p>
+            <p className={styles.statValue}>
+              {highestPackage ? `₹${highestPackage}` : "-"}
+            </p>
             <p className={styles.statLabel}>Highest Package</p>
             {highestPackage > 0 && <p className={styles.statMeta}>LPA</p>}
           </div>
@@ -420,8 +444,21 @@ const PlacementList = () => {
           </div>
           {donutTotal > 0 ? (
             <div className={styles.donutRow}>
-              <svg viewBox="0 0 100 100" width={140} height={140} role="img" aria-label="Placement status breakdown">
-                <circle cx="50" cy="50" r={RADIUS} fill="none" stroke="#eef0f5" strokeWidth="14" />
+              <svg
+                viewBox="0 0 100 100"
+                width={140}
+                height={140}
+                role="img"
+                aria-label="Placement status breakdown"
+              >
+                <circle
+                  cx="50"
+                  cy="50"
+                  r={RADIUS}
+                  fill="none"
+                  stroke="#eef0f5"
+                  strokeWidth="14"
+                />
                 {donutArcs.map((arc) =>
                   arc.value > 0 ? (
                     <circle
@@ -438,10 +475,23 @@ const PlacementList = () => {
                     />
                   ) : null,
                 )}
-                <text x="50" y="46" textAnchor="middle" fontSize="20" fontWeight="700" fill="#111827">
+                <text
+                  x="50"
+                  y="46"
+                  textAnchor="middle"
+                  fontSize="20"
+                  fontWeight="700"
+                  fill="#111827"
+                >
                   {placedCount}
                 </text>
-                <text x="50" y="62" textAnchor="middle" fontSize="9" fill="#9ca3af">
+                <text
+                  x="50"
+                  y="62"
+                  textAnchor="middle"
+                  fontSize="9"
+                  fill="#9ca3af"
+                >
                   Placed
                 </text>
               </svg>
@@ -449,12 +499,18 @@ const PlacementList = () => {
               <ul className={styles.donutLegend}>
                 {donutArcs.map((arc) => (
                   <li key={arc.label}>
-                    <span className={styles.legendDot} style={{ background: arc.color }} />
+                    <span
+                      className={styles.legendDot}
+                      style={{ background: arc.color }}
+                    />
                     <span className={styles.legendLabel}>
                       {arc.label} ({arc.value})
                     </span>
                     <span className={styles.legendPct}>
-                      {donutTotal ? Math.round((arc.value / donutTotal) * 1000) / 10 : 0}%
+                      {donutTotal
+                        ? Math.round((arc.value / donutTotal) * 1000) / 10
+                        : 0}
+                      %
                     </span>
                   </li>
                 ))}
@@ -476,7 +532,9 @@ const PlacementList = () => {
             <ul className={styles.companyList}>
               {topCompanies.map((c) => (
                 <li key={c.name}>
-                  <span className={styles.companyAvatar}>{c.name.charAt(0).toUpperCase()}</span>
+                  <span className={styles.companyAvatar}>
+                    {c.name.charAt(0).toUpperCase()}
+                  </span>
                   <span className={styles.companyName}>{c.name}</span>
                   <span className={styles.companyCount}>{c.count}</span>
                 </li>
@@ -500,13 +558,20 @@ const PlacementList = () => {
                 <div className={styles.meterHead}>
                   <span>{arc.label}</span>
                   <span>
-                    {arc.value} ({donutTotal ? Math.round((arc.value / donutTotal) * 1000) / 10 : 0}%)
+                    {arc.value} (
+                    {donutTotal
+                      ? Math.round((arc.value / donutTotal) * 1000) / 10
+                      : 0}
+                    %)
                   </span>
                 </div>
                 <div className={styles.meterTrack}>
                   <div
                     className={styles.meterFill}
-                    style={{ width: `${arc.share * 100}%`, background: arc.color }}
+                    style={{
+                      width: `${arc.share * 100}%`,
+                      background: arc.color,
+                    }}
                   />
                 </div>
               </li>
@@ -607,7 +672,9 @@ const PlacementList = () => {
                 notched: false,
               }}
               sx={{
-                "& .MuiOutlinedInput-notchedOutline": { border: "1px solid #e5e7eb" },
+                "& .MuiOutlinedInput-notchedOutline": {
+                  border: "1px solid #e5e7eb",
+                },
                 minWidth: 120,
                 width: "100%",
               }}
@@ -616,14 +683,22 @@ const PlacementList = () => {
 
           <div>
             {hasActiveFilters && (
-              <button className={listStyles.clear} onClick={handleClearFilters} title="Clear filters">
+              <button
+                className={listStyles.clear}
+                onClick={handleClearFilters}
+                title="Clear filters"
+              >
                 <IoClose />
               </button>
             )}
           </div>
 
           <div>
-            <button type="button" className={listStyles.exportBtn} onClick={getExcel}>
+            <button
+              type="button"
+              className={listStyles.exportBtn}
+              onClick={getExcel}
+            >
               Export
               <MdOutlineFileDownload />
             </button>
@@ -633,16 +708,35 @@ const PlacementList = () => {
 
       <div className="bg-white border border-[#eef0f5] rounded-xl overflow-hidden mt-4 sm:mt-5">
         <div className="overflow-x-auto w-full">
-          <table className="w-full border-collapse" style={{ minWidth: "860px" }}>
+          <table
+            className="w-full border-collapse"
+            style={{ minWidth: "860px" }}
+          >
             <thead>
               <tr className="bg-gradient-to-b from-[#144196] to-[#0b2456]">
-                <th className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-white text-left">Student</th>
-                <th className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-white text-left">Company</th>
-                <th className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-white text-left">Role</th>
-                <th className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-white text-left">Package (LPA)</th>
-                <th className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-white text-left">Placement Date</th>
-                <th className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-white text-left">Status</th>
-                <th className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-white text-left">Action</th>
+                <th className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-white text-left">
+                  Student
+                </th>
+                <th className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-white text-left">
+                  Company
+                </th>
+                <th className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-white text-left">
+                  Role
+                </th>
+                <th className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-white text-left">
+                  Package (LPA)
+                </th>
+                <th className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-white text-left">
+                  Placement Date
+                </th>
+                <th className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-white text-left">
+                  Status
+                </th>
+                {canShowActions && (
+                  <th className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-white text-left">
+                    Action
+                  </th>
+                )}
               </tr>
             </thead>
             {loading ? (
@@ -657,53 +751,84 @@ const PlacementList = () => {
               <tbody>
                 {list?.length > 0 ? (
                   list.map((item) => {
-                    const pill = STATUS_STYLE[item.status] || STATUS_STYLE["In Process"];
+                    const pill =
+                      STATUS_STYLE[item.status] || STATUS_STYLE["In Process"];
                     return (
                       <tr
                         key={item._id}
                         className="border-b border-[#f0f1f5] last:border-0 hover:bg-[#f5f8ff] transition-colors"
                       >
                         <td className="px-4 py-3.5 text-sm text-[#374151]">
-                          <div className="font-medium text-[#111827]">{item?.studentName || "-"}</div>
-                          <div className="text-xs text-[#9ca3af]">{item?.studentIdNo}</div>
+                          <div className="font-medium text-[#111827]">
+                            {item?.studentName || "-"}
+                          </div>
+                          <div className="text-xs text-[#9ca3af]">
+                            {item?.studentIdNo}
+                          </div>
                         </td>
-                        <td className="px-4 py-3.5 text-sm text-[#374151]">{item?.companyName || "-"}</td>
-                        <td className="px-4 py-3.5 text-sm text-[#374151]">{item?.role || "-"}</td>
-                        <td className="px-4 py-3.5 text-sm text-[#374151]">{item?.package ?? "-"}</td>
-                        <td className="px-4 py-3.5 text-sm text-[#374151]">{formatDate(item?.placementDate)}</td>
+                        <td className="px-4 py-3.5 text-sm text-[#374151]">
+                          {item?.companyName || "-"}
+                        </td>
+                        <td className="px-4 py-3.5 text-sm text-[#374151]">
+                          {item?.role || "-"}
+                        </td>
+                        <td className="px-4 py-3.5 text-sm text-[#374151]">
+                          {item?.package ?? "-"}
+                        </td>
+                        <td className="px-4 py-3.5 text-sm text-[#374151]">
+                          {formatDate(item?.placementDate)}
+                        </td>
                         <td className="px-4 py-3.5 text-sm">
                           <span className={styles.statusPill} style={pill}>
                             {item?.status || "In Process"}
                           </span>
                         </td>
-                        <td className="px-4 py-3.5 text-sm">
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              aria-label={`Edit placement for ${item?.studentName}`}
-                              className="text-[#123d84] border border-[#123d84] rounded-lg p-1.5 flex items-center cursor-pointer hover:bg-[#123d84] hover:text-white transition-colors"
-                              onClick={() => openEdit({ ...item, id: item._id })}
-                            >
-                              <EditIcon width={15} height={15} />
-                            </button>
-                            <button
-                              type="button"
-                              aria-label={`Delete placement for ${item?.studentName}`}
-                              className="text-[#d92d20] border border-[#d92d20] rounded-lg p-1.5 flex items-center cursor-pointer hover:bg-[#d92d20] hover:text-white transition-colors"
-                              onClick={() => setDeleting(item)}
-                            >
-                              <TrashIcon width={15} height={15} />
-                            </button>
-                          </div>
-                        </td>
+                        {canShowActions && (
+                          <td className="px-4 py-3.5 text-sm">
+                            <div className="flex items-center gap-2">
+                              {canEdit && (
+                                <button
+                                  type="button"
+                                  aria-label={`Edit placement for ${item?.studentName}`}
+                                  className="text-[#123d84] border border-[#123d84] rounded-lg p-1.5 flex items-center cursor-pointer hover:bg-[#123d84] hover:text-white transition-colors"
+                                  onClick={() =>
+                                    openEdit({ ...item, id: item._id })
+                                  }
+                                >
+                                  <EditIcon width={15} height={15} />
+                                </button>
+                              )}
+
+                              {canDelete && (
+                                <button
+                                  type="button"
+                                  aria-label={`Delete placement for ${item?.studentName}`}
+                                  className="text-[#d92d20] border border-[#d92d20] rounded-lg p-1.5 flex items-center cursor-pointer hover:bg-[#d92d20] hover:text-white transition-colors"
+                                  onClick={() => setDeleting(item)}
+                                >
+                                  <TrashIcon width={15} height={15} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     );
                   })
                 ) : (
                   <tr>
-                    <td colSpan="7" className="text-center py-16">
-                      <InboxIcon width={32} height={32} style={{ color: "#c2c8d4", margin: "0 auto" }} />
-                      <p className="text-sm text-[#9ca3af] font-medium mt-2">No Data Found</p>
+                    <td
+                      colSpan={canShowActions ? 7 : 6}
+                      className="text-center py-16"
+                    >
+                      <InboxIcon
+                        width={32}
+                        height={32}
+                        style={{ color: "#c2c8d4", margin: "0 auto" }}
+                      />
+                      <p className="text-sm text-[#9ca3af] font-medium mt-2">
+                        No Data Found
+                      </p>
                     </td>
                   </tr>
                 )}

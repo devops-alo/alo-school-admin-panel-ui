@@ -12,6 +12,7 @@ import Loader from "../../component/loader/Loader";
 import { toast } from "react-toastify";
 import { FiArrowLeft, FiX, FiBookOpen, FiUsers } from "react-icons/fi";
 import dayjs from "dayjs";
+import { hasActionAccess } from "../utils/permissions";
 
 // Course-level drill-down: subjects as tabs, and for the active subject, a
 // single table of every roster student with their submission status.
@@ -19,7 +20,8 @@ const TaskCourseDetail = () => {
   const { courseId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-
+  const canView = hasActionAccess("/tasks", "view");
+  const canEdit = hasActionAccess("/tasks", "edit");
   const batchId = searchParams.get("batchId") || "";
   const date = searchParams.get("date") || "";
 
@@ -191,14 +193,19 @@ const TaskCourseDetail = () => {
   return (
     <div className={styles.container}>
       <div className={styles.pageHeader}>
-        <button type="button" className={styles.back} onClick={() => navigate(-1)}>
+        <button
+          type="button"
+          className={styles.back}
+          onClick={() => navigate(-1)}
+        >
           <FiArrowLeft /> Back
         </button>
 
         <div>
           <h2 className={styles.heading}>{courseName}</h2>
           <p className={styles.subheading}>
-            Subject-wise task summary · {date ? dayjs(date).format("DD MMM YYYY") : "All Dates"} ·{" "}
+            Subject-wise task summary ·{" "}
+            {date ? dayjs(date).format("DD MMM YYYY") : "All Dates"} ·{" "}
             {roster.length} student
             {roster.length === 1 ? "" : "s"}
           </p>
@@ -213,7 +220,9 @@ const TaskCourseDetail = () => {
             <span className={styles.emptyIcon}>
               <FiBookOpen />
             </span>
-            <p className={styles.emptyTitle}>No subjects assigned to this course yet</p>
+            <p className={styles.emptyTitle}>
+              No subjects assigned to this course yet
+            </p>
           </div>
         </div>
       ) : (
@@ -252,11 +261,16 @@ const TaskCourseDetail = () => {
                   key={option.key}
                   type="button"
                   className={`${styles.statusFilterBtn} ${
-                    statusFilter === option.key ? styles.statusFilterBtnActive : ""
+                    statusFilter === option.key
+                      ? styles.statusFilterBtnActive
+                      : ""
                   }`}
                   onClick={() => setStatusFilter(option.key)}
                 >
-                  {option.label} <span className={styles.statusFilterCount}>{option.count}</span>
+                  {option.label}{" "}
+                  <span className={styles.statusFilterCount}>
+                    {option.count}
+                  </span>
                 </button>
               ))}
             </div>
@@ -284,10 +298,18 @@ const TaskCourseDetail = () => {
             </div>
           </div>
 
-          {selectedIds.size > 0 && (
+          {canEdit && selectedIds.size > 0 && (
             <div className={styles.bulkBar}>
-              <span>{selectedIds.size} student{selectedIds.size > 1 ? "s" : ""} selected</span>
-              <button className={styles.bulkBtn} onClick={markSelectedCompleted} disabled={bulkSaving}>
+              <span>
+                {selectedIds.size} student
+                {selectedIds.size > 1 ? "s" : ""} selected
+              </span>
+
+              <button
+                className={styles.bulkBtn}
+                onClick={markSelectedCompleted}
+                disabled={bulkSaving}
+              >
                 {bulkSaving ? "Updating..." : "Mark as Completed"}
               </button>
             </div>
@@ -298,15 +320,18 @@ const TaskCourseDetail = () => {
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th className={styles.checkboxCell}>
-                      <input
-                        type="checkbox"
-                        checked={allSelected}
-                        onChange={toggleSelectAll}
-                        disabled={selectableRows.length === 0}
-                        aria-label="Select all"
-                      />
-                    </th>
+                    {canEdit && (
+                      <th className={styles.checkboxCell}>
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={toggleSelectAll}
+                          disabled={selectableRows.length === 0}
+                          aria-label="Select all"
+                        />
+                      </th>
+                    )}
+
                     <th>Student</th>
                     <th>Status</th>
                     <th>Tasks Logged</th>
@@ -318,33 +343,52 @@ const TaskCourseDetail = () => {
                   {filteredRows.length > 0 ? (
                     filteredRows.map(({ student, tasks }) => (
                       <tr key={student._id}>
-                        <td className={styles.checkboxCell}>
-                          {tasks.length > 0 && (
-                            <input
-                              type="checkbox"
-                              checked={selectedIds.has(student._id)}
-                              onChange={() => toggleRow(student._id)}
-                              aria-label={`Select ${student.name}`}
-                            />
-                          )}
-                        </td>
+                        {canEdit && (
+                          <td className={styles.checkboxCell}>
+                            {tasks.length > 0 && (
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.has(student._id)}
+                                onChange={() => toggleRow(student._id)}
+                                aria-label={`Select ${student.name}`}
+                              />
+                            )}
+                          </td>
+                        )}
 
                         <td>
                           <p className={styles.studentName}>{student.name}</p>
-                          <p className={styles.studentMeta}>{student.studentId}</p>
+                          <p className={styles.studentMeta}>
+                            {student.studentId}
+                          </p>
                         </td>
 
                         <td>
-                          <span className={tasks.length > 0 ? styles.badgeSuccess : styles.badgeDanger}>
+                          <span
+                            className={
+                              tasks.length > 0
+                                ? styles.badgeSuccess
+                                : styles.badgeDanger
+                            }
+                          >
                             {tasks.length > 0 ? "Submitted" : "Not Submitted"}
                           </span>
                         </td>
 
-                        <td>{tasks.length > 0 ? `${tasks.length} task${tasks.length > 1 ? "s" : ""}` : "-"}</td>
+                        <td>
+                          {tasks.length > 0
+                            ? `${tasks.length} task${tasks.length > 1 ? "s" : ""}`
+                            : "-"}
+                        </td>
 
                         <td>
                           {tasks.length > 0 ? (
-                            <button className={styles.viewBtn} onClick={() => setViewingStudent({ student, tasks })}>
+                            <button
+                              className={styles.viewBtn}
+                              onClick={() =>
+                                setViewingStudent({ student, tasks })
+                              }
+                            >
                               View
                             </button>
                           ) : (
@@ -355,12 +399,14 @@ const TaskCourseDetail = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={5} className={styles.noData}>
+                      <td colSpan={canEdit ? 5 : 4} className={styles.noData}>
                         <div className={styles.emptyState}>
                           <span className={styles.emptyIcon}>
                             <FiUsers />
                           </span>
-                          <p className={styles.emptyTitle}>No students found for this course</p>
+                          <p className={styles.emptyTitle}>
+                            No students found for this course
+                          </p>
                         </div>
                       </td>
                     </tr>
@@ -374,16 +420,26 @@ const TaskCourseDetail = () => {
 
       {viewingStudent && (
         <div className={styles.overlay} onClick={() => setViewingStudent(null)}>
-          <div className={styles.modal} onClick={(event) => event.stopPropagation()}>
+          <div
+            className={styles.modal}
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className={styles.modalHeader}>
               <div>
-                <p className={styles.modalTitle}>{viewingStudent.student.name}</p>
+                <p className={styles.modalTitle}>
+                  {viewingStudent.student.name}
+                </p>
                 <p className={styles.modalSubtitle}>
-                  {viewingStudent.student.studentId} · {dayjs(date).format("DD MMM YYYY")}
+                  {viewingStudent.student.studentId} ·{" "}
+                  {dayjs(date).format("DD MMM YYYY")}
                 </p>
               </div>
 
-              <button className={styles.closeBtn} onClick={() => setViewingStudent(null)} aria-label="Close">
+              <button
+                className={styles.closeBtn}
+                onClick={() => setViewingStudent(null)}
+                aria-label="Close"
+              >
                 <FiX />
               </button>
             </div>
@@ -393,7 +449,13 @@ const TaskCourseDetail = () => {
                 <div key={task._id} className={styles.taskCard}>
                   <div className={styles.taskCardHeader}>
                     <p className={styles.taskTitle}>{task.title}</p>
-                    <span className={task.status === "Completed" ? styles.badgeSuccess : styles.badgeDanger}>
+                    <span
+                      className={
+                        task.status === "Completed"
+                          ? styles.badgeSuccess
+                          : styles.badgeDanger
+                      }
+                    >
                       {task.status}
                     </span>
                   </div>
@@ -415,7 +477,9 @@ const TaskCourseDetail = () => {
 
                   {task.notes && (
                     <div className={styles.taskNotes}>
-                      <span className={styles.taskMetaLabel}>Update / Notes</span>
+                      <span className={styles.taskMetaLabel}>
+                        Update / Notes
+                      </span>
                       <p>{task.notes}</p>
                     </div>
                   )}

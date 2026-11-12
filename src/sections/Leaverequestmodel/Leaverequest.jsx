@@ -25,6 +25,7 @@ import { faEye } from "@fortawesome/free-solid-svg-icons";
 import { IoClose } from "react-icons/io5";
 import { toast, ToastContainer } from 'react-toastify';
 import { FaEye } from "react-icons/fa";
+import { hasActionAccess } from "../utils/permissions";
 
 
 const theme = createTheme({
@@ -52,7 +53,8 @@ const theme = createTheme({
 
 const LeaveRequest = () => {
   const useQuery = () => new URLSearchParams(useLocation().search);
-
+  const canView = hasActionAccess("/attendence/leaverequest", "view");
+  const canEdit = hasActionAccess("/attendence/leaverequest", "edit");
   const query = useQuery();
 
   const dates = query.get("date");
@@ -141,6 +143,7 @@ const LeaveRequest = () => {
   };
 
   useEffect(() => {
+    if (!canView) return;
     // if (!date) return;
     getleavelist()
   }, [offset, date, status, searchText, courseId, batchId, leaveType])
@@ -249,30 +252,37 @@ const LeaveRequest = () => {
   const idloading = loadingStatus !== null
 
   const handleUpdateClick = async (id, status, adminId, reason) => {
+    if (!canEdit) {
+      toast.error("You don't have permission to perform this action");
+      return;
+    }
+
     // if (!validation()) {
     //   return;
     // }
-    setLoadingStatus(status)
-    try {
-      let res = await updateLeaveRequest(id, status, adminId, reason)
-      setUpdatestatus(status)
-      setUpdate(false)
-      getleavelist()
-      setReason('')
-      if (status === 'Rejected') {
-        toast.error('Leave Rejected')
-      } else if (status === 'Approved') {
-        toast.success('Leave Approved')
-      }
 
-    }
-    catch (err) {
-      console.log(err)
-      toast.error(err?.response?.data?.message)
+    setLoadingStatus(status);
+
+    try {
+      let res = await updateLeaveRequest(id, status, adminId, reason);
+
+      setUpdatestatus(status);
+      setUpdate(false);
+      getleavelist();
+      setReason("");
+
+      if (status === "Rejected") {
+        toast.error("Leave Rejected");
+      } else if (status === "Approved") {
+        toast.success("Leave Approved");
+      }
+    } catch (err) {
+      console.log(err);
+      toast.error(err?.response?.data?.message);
     } finally {
-      setLoadingStatus(null)
+      setLoadingStatus(null);
     }
-  }
+  };
   const formatTime = (dateString) => {
     const date = new Date(dateString);
     if (isNaN(date.getTime())) {
@@ -332,7 +342,9 @@ const [leaveReson,setLeaveReason]= useState('')
     }
 
   }
-
+  if (!canView) {
+    return <div>You don't have permission to view leave requests.</div>;
+  }
   return (
     <>
       {/* Portaled straight to <body>, sibling to react-modal's own portal -
@@ -347,23 +359,28 @@ const [leaveReson,setLeaveReason]= useState('')
         <div className={styles.attendance_container}>
           <div className={styles.header_container}>
             <div className={styles.header_container1}>
-              <div >
-                <IoMdArrowRoundBack style={{ cursor: 'pointer', fontSize: '20px', marginTop: '2px' }} onClick={() => window.history.back()} />
-
+              <div>
+                <IoMdArrowRoundBack
+                  style={{
+                    cursor: "pointer",
+                    fontSize: "20px",
+                    marginTop: "2px",
+                  }}
+                  onClick={() => window.history.back()}
+                />
               </div>
               <h3 className={styles.attendance_h3}>Leave Request</h3>
             </div>
             <div className={styles.header_container2}>
-
               <div className={styles.selectWrapper}>
                 <FormControl
                   variant="outlined"
                   size="small"
                   sx={{
                     minWidth: 150,
-                    backgroundColor: '#fff',
-                    borderRadius: '10px',
-                    border: '1px solid #e5e7eb',
+                    backgroundColor: "#fff",
+                    borderRadius: "10px",
+                    border: "1px solid #e5e7eb",
                   }}
                 >
                   <Select
@@ -372,57 +389,54 @@ const [leaveReson,setLeaveReason]= useState('')
                     displayEmpty
                     IconComponent={KeyboardArrowDownIcon}
                     sx={{
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        border: 'none',
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        border: "none",
                       },
-                      fontSize: '14px',
-                      fontFamily: 'inherit',
-                      color: '#374151',
-                      padding: '4px 10px',
-                      height: '42px',
-                      border: 'none',
+                      fontSize: "14px",
+                      fontFamily: "inherit",
+                      color: "#374151",
+                      padding: "4px 10px",
+                      height: "42px",
+                      border: "none",
                     }}
                   >
                     <MenuItem value="">All Leave Types</MenuItem>
                     <MenuItem value="Casual">Casual</MenuItem>
                     <MenuItem value="Sick">Sick</MenuItem>
                     <MenuItem value="permission">Permission</MenuItem>
-                    <MenuItem value="earlyPermission">Early Permission</MenuItem>
+                    <MenuItem value="earlyPermission">
+                      Early Permission
+                    </MenuItem>
                     <MenuItem value="other">Others</MenuItem>
-
-
                   </Select>
-
                 </FormControl>
               </div>
               <div className={styles.selectWrapper}>
-
                 <FormControl
                   variant="outlined"
                   size="small"
                   sx={{
                     minWidth: 150,
-                    backgroundColor: '#fff',
-                    borderRadius: '10px',
-                    border: '1px solid #e5e7eb',
+                    backgroundColor: "#fff",
+                    borderRadius: "10px",
+                    border: "1px solid #e5e7eb",
                   }}
                 >
-
                   <Select
                     value={batchId}
                     onChange={handleBatchChange}
                     displayEmpty
                     IconComponent={KeyboardArrowDownIcon}
                     sx={{
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        border: 'none',
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        border: "none",
                       },
-                      fontSize: '14px',
-                      fontFamily: 'inherit',
-                      color: '#374151',
-                      padding: '4px 10px',
-                      height: '42px',
-                      border: 'none'
+                      fontSize: "14px",
+                      fontFamily: "inherit",
+                      color: "#374151",
+                      padding: "4px 10px",
+                      height: "42px",
+                      border: "none",
                     }}
                   >
                     <MenuItem value="">All Batches</MenuItem>
@@ -435,15 +449,14 @@ const [leaveReson,setLeaveReason]= useState('')
                 </FormControl>
               </div>
               <div className={styles.selectWrapper}>
-
                 <FormControl
                   variant="outlined"
                   size="small"
                   sx={{
                     minWidth: 150,
-                    backgroundColor: '#fff',
-                    borderRadius: '10px',
-                    border: '1px solid #e5e7eb',
+                    backgroundColor: "#fff",
+                    borderRadius: "10px",
+                    border: "1px solid #e5e7eb",
                   }}
                 >
                   <Select
@@ -452,40 +465,40 @@ const [leaveReson,setLeaveReason]= useState('')
                     displayEmpty
                     IconComponent={KeyboardArrowDownIcon}
                     sx={{
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        border: 'none',
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        border: "none",
                       },
-                      fontSize: '14px',
-                      fontFamily: 'inherit',
-                      color: '#374151',
-                      padding: '4px 10px',
-                      height: '42px',
-                      border: 'none'
+                      fontSize: "14px",
+                      fontFamily: "inherit",
+                      color: "#374151",
+                      padding: "4px 10px",
+                      height: "42px",
+                      border: "none",
                     }}
                     disabled={!batchId}
                   >
                     <MenuItem value="">All Courses</MenuItem>
                     {courseOptions.map((item, index) => {
                       return (
-                        <MenuItem value={item.courseId} key={index}>{item.courseName}</MenuItem>
-                      )
+                        <MenuItem value={item.courseId} key={index}>
+                          {item.courseName}
+                        </MenuItem>
+                      );
                     })}
                   </Select>
-
                 </FormControl>
               </div>
               <div className={styles.dropdown}>
                 <div className={styles.dropdownWrapper}>
-
                   <div className={styles.selectWrapper}>
                     <FormControl
                       variant="outlined"
                       size="small"
                       sx={{
                         minWidth: 150,
-                        backgroundColor: '#fff',
-                        borderRadius: '10px',
-                        border: '1px solid #e5e7eb',
+                        backgroundColor: "#fff",
+                        borderRadius: "10px",
+                        border: "1px solid #e5e7eb",
                       }}
                     >
                       <Select
@@ -494,15 +507,15 @@ const [leaveReson,setLeaveReason]= useState('')
                         displayEmpty
                         IconComponent={KeyboardArrowDownIcon}
                         sx={{
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            border: 'none',
+                          "& .MuiOutlinedInput-notchedOutline": {
+                            border: "none",
                           },
-                          fontSize: '14px',
-                          fontFamily: 'inherit',
-                          color: '#374151',
-                          padding: '4px 10px',
-                          height: '42px',
-                          border: 'none',
+                          fontSize: "14px",
+                          fontFamily: "inherit",
+                          color: "#374151",
+                          padding: "4px 10px",
+                          height: "42px",
+                          border: "none",
                         }}
                       >
                         <MenuItem value="">All Status</MenuItem>
@@ -510,7 +523,6 @@ const [leaveReson,setLeaveReason]= useState('')
                         <MenuItem value="Approved">Approved</MenuItem>
                         <MenuItem value="Rejected">Rejected</MenuItem>
                       </Select>
-
                     </FormControl>
                   </div>
                 </div>
@@ -531,27 +543,28 @@ const [leaveReson,setLeaveReason]= useState('')
                     slotProps={{
                       textField: {
                         fullWidth: true,
-                        placeholder: 'DD/MM/YYYY',
+                        placeholder: "DD/MM/YYYY",
                         onClick: () => setOpen(true),
                         error: Boolean(Error?.DateofBrith),
                         sx: {
-                          '& .MuiPickersOutlinedInput-root': {
-                            height: '42px',
-                            outline: 'none',
-                            width: '100%',
-                            backgroundColor: '#fff',
-                            borderRadius: '10px',
+                          "& .MuiPickersOutlinedInput-root": {
+                            height: "42px",
+                            outline: "none",
+                            width: "100%",
+                            backgroundColor: "#fff",
+                            borderRadius: "10px",
                           },
-                          '& fieldset': {
-                            border: '1px solid #e5e7eb',
+                          "& fieldset": {
+                            border: "1px solid #e5e7eb",
                           },
-                          '&:hover fieldset': {
-                            border: '1px solid #123d84',
-                            outline: 'none'
+                          "&:hover fieldset": {
+                            border: "1px solid #123d84",
+                            outline: "none",
                           },
-                          '& .MuiPickersOutlinedInput-root.Mui-focused .MuiPickersOutlinedInput-notchedOutline': {
-                            border: '1px solid #123d84'
-                          }
+                          "& .MuiPickersOutlinedInput-root.Mui-focused .MuiPickersOutlinedInput-notchedOutline":
+                            {
+                              border: "1px solid #123d84",
+                            },
                         },
                       },
                     }}
@@ -568,8 +581,9 @@ const [leaveReson,setLeaveReason]= useState('')
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <BiSearchAlt style={{ fontSize: 18, color: '#6b7280' }} />
-
+                        <BiSearchAlt
+                          style={{ fontSize: 18, color: "#6b7280" }}
+                        />
                       </InputAdornment>
                     ),
                     endAdornment: searchText && (
@@ -580,36 +594,39 @@ const [leaveReson,setLeaveReason]= useState('')
                       </InputAdornment>
                     ),
                     style: {
-                      backgroundColor: '#fff',
-                      borderRadius: '10px',
-                      height: '42px',
-                      fontSize: '14px',
-                      padding: '4px 10px',
-                      border: '1px solid #e5e7eb',
-                      fontFamily: 'inherit',
+                      backgroundColor: "#fff",
+                      borderRadius: "10px",
+                      height: "42px",
+                      fontSize: "14px",
+                      padding: "4px 10px",
+                      border: "1px solid #e5e7eb",
+                      fontFamily: "inherit",
                     },
-                    notched: false
+                    notched: false,
                   }}
                   sx={{
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      border: 'none',
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      border: "none",
                     },
-                    width: '100%',
+                    width: "100%",
                   }}
                 />
               </div>
               <div>
-                {(status?.toString().trim() || courseId?.toString().trim() || batchId?.toString().trim() || leaveType?.toString().trim() || searchText || date) && (
+                {(status?.toString().trim() ||
+                  courseId?.toString().trim() ||
+                  batchId?.toString().trim() ||
+                  leaveType?.toString().trim() ||
+                  searchText ||
+                  date) && (
                   <button className={styles.clear} onClick={handlefilterSearch}>
                     <IoClose />
                   </button>
                 )}
-
               </div>
             </div>
           </div>
         </div>
-
 
         <div>
           <div className={styles.table_container}>
@@ -623,94 +640,145 @@ const [leaveReson,setLeaveReason]= useState('')
                 <th>Reason</th>
                 <th>Status</th>
               </tr>
-              {loading ?
+              {loading ? (
                 <tr>
-                  <td colSpan="7" className="text-center py-20 text-lg text-gray-500 font-semibold border-0">
+                  <td
+                    colSpan="7"
+                    className="text-center py-20 text-lg text-gray-500 font-semibold border-0"
+                  >
                     <Loader />
                   </td>
                 </tr>
-                : <tbody>
-                  {
-                    Array.isArray(list) && list.length > 0 ?
-                      list.map((item) => (
-                        <tr key={item._id} className={styles.trtd}>
-                          <td style={{ textTransform: 'capitalize' }}>
-                            <div className={styles.profileInfo}>
-                              <span className={styles.profileName}>{item?.userDetails?.name}</span>
-                              <span className={styles.profileMeta}>{item?.userDetails?.studentId}</span>
-                              <span className={styles.profileMeta} style={{ textTransform: 'none' }}>{item?.userDetails?.mobileNo}</span>
-                            </div>
-                          </td>
-                          <td style={{ textTransform: 'capitalize' }}>
-                            <div className={styles.stackCell}>
-                              <span className={styles.stackPrimary}>{item?.batchDetails?.batchName || '-'}</span>
-                              <span className={styles.stackSecondary}>{item?.courseDetails?.courseName || '-'}</span>
-                            </div>
-                          </td>
-                          <td style={{ textTransform: 'capitalize' }}>
-                            <div className={styles.stackCell}>
-                              <span className={styles.stackPrimary}>{item?.leaveType}</span>
-                              <span className={styles.stackSecondary} style={{ textTransform: 'none' }}>
-                                {item.isPermission || item?.isEarlyPermission
-                                  ? formatTimehours(item?.permissionTime)
-                                  : `${item?.noOfDays} ${item?.noOfDays > 1 ? 'days' : 'day'}`}
-                              </span>
-                            </div>
-                          </td>
-                          <td>
-                            <div className={styles.stackCell} style={{ textTransform: 'none' }}>
-                              <span className={styles.stackPrimary}>
-                                {item.isPermission || item?.isEarlyPermission
-                                  ? formatTime(item?.startTime)
-                                  : item?.fromDate?.split("T")[0]}
-                              </span>
-                              <span className={styles.stackSecondary}>
-                                {'→ '}
-                                {item.isPermission || item?.isEarlyPermission
-                                  ? formatTime(item?.endTime)
-                                  : item?.toDate?.split("T")[0]}
-                              </span>
-                            </div>
-                          </td>
-                          <td>{item?.createdAt?.split("T")[0]}</td>
-                          <td onClick={() => handleReasonModel(item._id)} style={{cursor:'pointer'}}><FaEye />
-</td>
+              ) : (
+                <tbody>
+                  {Array.isArray(list) && list.length > 0 ? (
+                    list.map((item) => (
+                      <tr key={item._id} className={styles.trtd}>
+                        <td style={{ textTransform: "capitalize" }}>
+                          <div className={styles.profileInfo}>
+                            <span className={styles.profileName}>
+                              {item?.userDetails?.name}
+                            </span>
+                            <span className={styles.profileMeta}>
+                              {item?.userDetails?.studentId}
+                            </span>
+                            <span
+                              className={styles.profileMeta}
+                              style={{ textTransform: "none" }}
+                            >
+                              {item?.userDetails?.mobileNo}
+                            </span>
+                          </div>
+                        </td>
+                        <td style={{ textTransform: "capitalize" }}>
+                          <div className={styles.stackCell}>
+                            <span className={styles.stackPrimary}>
+                              {item?.batchDetails?.batchName || "-"}
+                            </span>
+                            <span className={styles.stackSecondary}>
+                              {item?.courseDetails?.courseName || "-"}
+                            </span>
+                          </div>
+                        </td>
+                        <td style={{ textTransform: "capitalize" }}>
+                          <div className={styles.stackCell}>
+                            <span className={styles.stackPrimary}>
+                              {item?.leaveType}
+                            </span>
+                            <span
+                              className={styles.stackSecondary}
+                              style={{ textTransform: "none" }}
+                            >
+                              {item.isPermission || item?.isEarlyPermission
+                                ? formatTimehours(item?.permissionTime)
+                                : `${item?.noOfDays} ${item?.noOfDays > 1 ? "days" : "day"}`}
+                            </span>
+                          </div>
+                        </td>
+                        <td>
+                          <div
+                            className={styles.stackCell}
+                            style={{ textTransform: "none" }}
+                          >
+                            <span className={styles.stackPrimary}>
+                              {item.isPermission || item?.isEarlyPermission
+                                ? formatTime(item?.startTime)
+                                : item?.fromDate?.split("T")[0]}
+                            </span>
+                            <span className={styles.stackSecondary}>
+                              {"→ "}
+                              {item.isPermission || item?.isEarlyPermission
+                                ? formatTime(item?.endTime)
+                                : item?.toDate?.split("T")[0]}
+                            </span>
+                          </div>
+                        </td>
+                        <td>{item?.createdAt?.split("T")[0]}</td>
+                        <td
+                          onClick={() => handleReasonModel(item._id)}
+                          style={{ cursor: "pointer" }}
+                        >
+                          <FaEye />
+                        </td>
 
-                          <td className={styles.green} style={{
-                            color: item.status === 'Approved' && '#12805c' || item.status === 'Created' && '#123d84' || item.status === 'Rejected' && '#d92d20',
-                            cursor: item?.status == 'Created' && 'pointer'
-                          }} onClick={() => item?.status == 'Created' && handlegetbyClick(item?._id)}>{item?.status == 'Created' ? <div><FontAwesomeIcon
-                            icon={faEye}
-                            style={{ marginRight: "5px" }}
-                            className={styles.viewIcon}
-                          />
-                            <span>View</span></div> : item.status} </td>
-                        </tr>
-                      ))
-                      :
-                      <tr >
-                        <td colSpan="7" className="text-center py-20 text-lg text-gray-500 font-semibold " style={{ border: "none" }}>
-                          <img src={nodata} alt="" width={'200px'} height={'200px'} className='m-auto' />
-                          <p className="text-center ">No Data Found</p>
+                        <td
+                          className={styles.green}
+                          style={{
+                            color:
+                              (item.status === "Approved" && "#12805c") ||
+                              (item.status === "Created" && "#123d84") ||
+                              (item.status === "Rejected" && "#d92d20"),
+                            cursor: item?.status == "Created" && "pointer",
+                          }}
+                          onClick={() =>
+                            item?.status == "Created" &&
+                            handlegetbyClick(item?._id)
+                          }
+                        >
+                          {item?.status == "Created" ? (
+                            <div>
+                              <FontAwesomeIcon
+                                icon={faEye}
+                                style={{ marginRight: "5px" }}
+                                className={styles.viewIcon}
+                              />
+                              <span>View</span>
+                            </div>
+                          ) : (
+                            item.status
+                          )}{" "}
                         </td>
                       </tr>
-
-
-                  }
-
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan="7"
+                        className="text-center py-20 text-lg text-gray-500 font-semibold "
+                        style={{ border: "none" }}
+                      >
+                        <img
+                          src={nodata}
+                          alt=""
+                          width={"200px"}
+                          height={"200px"}
+                          className="m-auto"
+                        />
+                        <p className="text-center ">No Data Found</p>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
-              }
+              )}
             </table>
           </div>
         </div>
 
-        <div className='flex flex-wrap justify-between items-center gap-3 w-full mt-4'>
-
-          {totalpages > 0 &&
+        <div className="flex flex-wrap justify-between items-center gap-3 w-full mt-4">
+          {totalpages > 0 && (
             <ThemeProvider theme={theme}>
               <div>
                 <Pagination
-
                   count={totalpages}
                   page={offset}
                   onChange={handlePageChange}
@@ -720,16 +788,15 @@ const [leaveReson,setLeaveReason]= useState('')
                 />
               </div>
             </ThemeProvider>
-          }
-          {totalpages > 0 &&
+          )}
+          {totalpages > 0 && (
             <div className="flex justify-between items-center">
               <p className="text-gray-500 text-sm">
                 Showing {startIndex} – {endIndex} of {totallist} students
               </p>
             </div>
-          }
+          )}
         </div>
-
       </div>
 
       <Modal
@@ -738,39 +805,45 @@ const [leaveReson,setLeaveReason]= useState('')
         contentLabel="Delete Student"
         style={{
           overlay: {
-            position: 'fixed',
+            position: "fixed",
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(21, 21, 21, 0.6)',
+            backgroundColor: "rgba(21, 21, 21, 0.6)",
             zIndex: 1000,
           },
           content: {
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
             padding: 0,
-            backgroundColor: '#fff',
-            borderRadius: '12px',
-            width: 'max-content',
-            height: 'max-content',
-            maxHeight: '90vh',
-            overflow: 'hidden',
-            boxShadow: '0 12px 32px rgba(15, 27, 51, 0.25)',
-            border: 'none',
+            backgroundColor: "#fff",
+            borderRadius: "12px",
+            width: "max-content",
+            height: "max-content",
+            maxHeight: "90vh",
+            overflow: "hidden",
+            boxShadow: "0 12px 32px rgba(15, 27, 51, 0.25)",
+            border: "none",
             zIndex: 1001,
           },
         }}
       >
-        <div
-
-        >
+        <div>
           <div className={styles.leavereq}>
             <div className={styles.reqhead}>
               <p>Leave Request</p>
-              <MdClose className={styles.closeIcon} onClick={() => { setUpdate(false), setData({}), setReason(''), setReasonerror('') }} />
+              <MdClose
+                className={styles.closeIcon}
+                onClick={() => {
+                  (setUpdate(false),
+                    setData({}),
+                    setReason(""),
+                    setReasonerror(""));
+                }}
+              />
             </div>
             <div className={styles.div}>
               <div className={styles.profile}>
@@ -782,37 +855,80 @@ const [leaveReson,setLeaveReason]= useState('')
               <div className={styles.grid}>
                 <div className={styles.grid1}>
                   <label for="">Student Name</label>
-                  <input type="text" style={{ color: 'grey', cursor: 'not-allowed' }} placeholder="Enter student name" value={data?.userDetails?.name} disabled />
+                  <input
+                    type="text"
+                    style={{ color: "grey", cursor: "not-allowed" }}
+                    placeholder="Enter student name"
+                    value={data?.userDetails?.name}
+                    disabled
+                  />
                 </div>
                 <div className={styles.grid1}>
                   <label for="">Phone Number</label>
-                  <input type="tel" style={{ color: 'grey', cursor: 'not-allowed' }} placeholder="Enter phone number" value={data?.userDetails?.mobileNo} disabled />
+                  <input
+                    type="tel"
+                    style={{ color: "grey", cursor: "not-allowed" }}
+                    placeholder="Enter phone number"
+                    value={data?.userDetails?.mobileNo}
+                    disabled
+                  />
                 </div>
               </div>
               <div className={styles.grids}>
                 <div className={styles.grid2}>
-                  <label for="">
-                    Duration
-                  </label>
-                  {data?.isPermission || data?.isEarlyPermission ?
-                    <input type="text" style={{ color: 'grey', cursor: 'not-allowed' }} placeholder="no of days" value={formatTimehours(data?.permissionTime)} disabled /> :
-                    <input type="text" style={{ color: 'grey', cursor: 'not-allowed' }} placeholder="no of days" value={data?.noOfDays} disabled />}
+                  <label for="">Duration</label>
+                  {data?.isPermission || data?.isEarlyPermission ? (
+                    <input
+                      type="text"
+                      style={{ color: "grey", cursor: "not-allowed" }}
+                      placeholder="no of days"
+                      value={formatTimehours(data?.permissionTime)}
+                      disabled
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      style={{ color: "grey", cursor: "not-allowed" }}
+                      placeholder="no of days"
+                      value={data?.noOfDays}
+                      disabled
+                    />
+                  )}
                 </div>
                 <div className={styles.grid2}>
                   <label for="">From</label>
-                  {data?.isPermission || data?.isEarlyPermission ? <input disabled className={styles.dateinput} value={formatTime(data?.startTime)}
-                  /> :
-                    <input style={{ color: 'grey', cursor: 'not-allowed' }} disabled className={styles.dateinput} value={data?.fromDate ? data.fromDate.slice(0, 10) : ""}
-                    />}
-
+                  {data?.isPermission || data?.isEarlyPermission ? (
+                    <input
+                      disabled
+                      className={styles.dateinput}
+                      value={formatTime(data?.startTime)}
+                    />
+                  ) : (
+                    <input
+                      style={{ color: "grey", cursor: "not-allowed" }}
+                      disabled
+                      className={styles.dateinput}
+                      value={data?.fromDate ? data.fromDate.slice(0, 10) : ""}
+                    />
+                  )}
                 </div>
                 <div className={styles.grid2}>
                   <label for="">To</label>
-                  {data?.isPermission || data?.isEarlyPermission ? <input style={{ color: 'grey', cursor: 'not-allowed' }} disabled className={styles.dateinput} value={formatTime(data?.endTime)}
-                  /> :
-                    <input style={{ color: 'grey', cursor: 'not-allowed' }} disabled className={styles.dateinput} value={data?.toDate ? data.toDate.slice(0, 10) : ""}
+                  {data?.isPermission || data?.isEarlyPermission ? (
+                    <input
+                      style={{ color: "grey", cursor: "not-allowed" }}
+                      disabled
+                      className={styles.dateinput}
+                      value={formatTime(data?.endTime)}
                     />
-                  }
+                  ) : (
+                    <input
+                      style={{ color: "grey", cursor: "not-allowed" }}
+                      disabled
+                      className={styles.dateinput}
+                      value={data?.toDate ? data.toDate.slice(0, 10) : ""}
+                    />
+                  )}
                 </div>
               </div>
               <div className={styles.gridss}>
@@ -820,7 +936,7 @@ const [leaveReson,setLeaveReason]= useState('')
                   <label>Description</label>
                   <textarea
                     disabled
-                    style={{ color: 'grey', cursor: 'auto' }}
+                    style={{ color: "grey", cursor: "auto" }}
                     placeholder="Enter description"
                     className={styles.description}
                     value={data?.discription}
@@ -834,60 +950,98 @@ const [leaveReson,setLeaveReason]= useState('')
                     placeholder="Enter Reason"
                     className={styles.description2}
                     value={reason}
-                    onChange={(e) => { setReason(e.target.value), setReasonerror('') }}
+                    disabled={!canEdit}
+                    onChange={(e) => {
+                      (setReason(e.target.value), setReasonerror(""));
+                    }}
                   ></textarea>
                   {/* {reasonerror && <p style={{ color: "red", fontSize: "12px" }}>{reasonerror}</p>} */}
-
                 </div>
               </div>
             </div>
-            <div className={styles.gridsss}>
-              <button className={styles.rejectBtn} onClick={() => handleUpdateClick(data?._id, 'Rejected', adminId, reason)} disabled={idloading}>{loadingStatus === 'Rejected' ? "Rejecting..." : "Reject"}</button>
-              <button className={styles.acceptBtn} onClick={() => handleUpdateClick(data?._id, 'Approved', adminId, reason)} disabled={idloading}>{loadingStatus === 'Approved' ? "Accepting..." : "Accept"}</button>
-            </div>
+            {canEdit && (
+              <div className={styles.gridsss}>
+                <button
+                  className={styles.rejectBtn}
+                  onClick={() =>
+                    handleUpdateClick(data?._id, "Rejected", adminId, reason)
+                  }
+                  disabled={idloading}
+                >
+                  {loadingStatus === "Rejected" ? "Rejecting..." : "Reject"}
+                </button>
+
+                <button
+                  className={styles.acceptBtn}
+                  onClick={() =>
+                    handleUpdateClick(data?._id, "Approved", adminId, reason)
+                  }
+                  disabled={idloading}
+                >
+                  {loadingStatus === "Approved" ? "Accepting..." : "Accept"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </Modal>
       <Modal
         isOpen={resonModel}
-        onRequestClose={() => {setReasonModel(false),setLeaveReason('')}}
+        onRequestClose={() => {
+          (setReasonModel(false), setLeaveReason(""));
+        }}
         contentLabel="Delete Student"
         style={{
           overlay: {
-            position: 'fixed',
+            position: "fixed",
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(21, 21, 21, 0.6)',
+            backgroundColor: "rgba(21, 21, 21, 0.6)",
             zIndex: 1000,
           },
           content: {
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            padding: '25px',
-            backgroundColor: '#fff',
-            borderRadius: '12px',
-            width: 'min(500px, 92vw)',
-            height: 'max-content',
-            maxHeight: '90vh',
-            overflow: 'auto',
-            boxShadow: '0 12px 32px rgba(15, 27, 51, 0.25)',
-            border: 'none',
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            padding: "25px",
+            backgroundColor: "#fff",
+            borderRadius: "12px",
+            width: "min(500px, 92vw)",
+            height: "max-content",
+            maxHeight: "90vh",
+            overflow: "auto",
+            boxShadow: "0 12px 32px rgba(15, 27, 51, 0.25)",
+            border: "none",
             zIndex: 1001,
           },
         }}
       >
         <div className={styles.reasonHeader}>
-          <p className='font-[600] text-[18px]' style={{ color: '#123d84', margin: 0 }}>Reason</p>
-          <MdClose className={styles.closeIcon} onClick={() => { setReasonModel(false), setLeaveReason('') }} />
+          <p
+            className="font-[600] text-[18px]"
+            style={{ color: "#123d84", margin: 0 }}
+          >
+            Reason
+          </p>
+          <MdClose
+            className={styles.closeIcon}
+            onClick={() => {
+              (setReasonModel(false), setLeaveReason(""));
+            }}
+          />
         </div>
-        <p className='mt-[18px] text-center text-[#374151]' style={{textTransform:'capitalize'}}>{leaveReson}</p>
+        <p
+          className="mt-[18px] text-center text-[#374151]"
+          style={{ textTransform: "capitalize" }}
+        >
+          {leaveReson}
+        </p>
       </Modal>
     </>
-  )
+  );
 }
 
 export default LeaveRequest

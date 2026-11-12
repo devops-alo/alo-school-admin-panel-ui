@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Modal from "../../components/modal/Modal";
 import styles from "./courseForms.module.css";
+import { hasActionAccess } from "../utils/permissions";
 
 const validateCourseName = (value) => {
   if (!value.trim()) return "Course name is required";
@@ -25,6 +26,10 @@ const AddCourseModal = ({ open, onClose, onSubmit, existingCourses, course }) =>
   const [duplicate, setDuplicate] = useState("");
   const [saving, setSaving] = useState(false);
   const isEdit = Boolean(course);
+  const canAdd = hasActionAccess("/course", "add");
+  const canEdit = hasActionAccess("/course", "edit");
+
+  const canSubmit = isEdit ? canEdit : canAdd;
 
   useEffect(() => {
     if (!open) return;
@@ -56,6 +61,9 @@ const AddCourseModal = ({ open, onClose, onSubmit, existingCourses, course }) =>
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canSubmit) {
+      return;
+    }
 
     const newErrors = {
       courseName: validateCourseName(form.courseName),
@@ -95,11 +103,18 @@ const AddCourseModal = ({ open, onClose, onSubmit, existingCourses, course }) =>
   };
 
   return (
-    <Modal open={open} title={isEdit ? "Edit Course" : "Add Course"} onClose={handleCancel} width={640}>
+    <Modal
+      open={open}
+      title={isEdit ? "Edit Course" : "Add Course"}
+      onClose={handleCancel}
+      width={640}
+    >
       <form className={styles.form} onSubmit={handleSubmit} noValidate>
         {duplicate && <p className={styles.formError}>{duplicate}</p>}
 
-        <div className={`${styles.group} ${errors.courseName ? styles.invalid : ""}`}>
+        <div
+          className={`${styles.group} ${errors.courseName ? styles.invalid : ""}`}
+        >
           <label htmlFor="courseName">
             Course Name<span className={styles.required}>*</span>
           </label>
@@ -109,12 +124,15 @@ const AddCourseModal = ({ open, onClose, onSubmit, existingCourses, course }) =>
             placeholder="Enter Course Name"
             value={form.courseName}
             onChange={handleChange("courseName")}
+            disabled={!canSubmit || saving}
           />
           <p className={styles.error}>{errors.courseName}</p>
         </div>
 
         <div className={styles.grid}>
-          <div className={`${styles.group} ${errors.duration ? styles.invalid : ""}`}>
+          <div
+            className={`${styles.group} ${errors.duration ? styles.invalid : ""}`}
+          >
             <label htmlFor="duration">
               Duration (Year)<span className={styles.required}>*</span>
             </label>
@@ -125,11 +143,14 @@ const AddCourseModal = ({ open, onClose, onSubmit, existingCourses, course }) =>
               placeholder="Enter Duration"
               value={form.duration}
               onChange={handleChange("duration")}
+              disabled={!canSubmit || saving}
             />
             <p className={styles.error}>{errors.duration}</p>
           </div>
 
-          <div className={`${styles.group} ${errors.noOfSem ? styles.invalid : ""}`}>
+          <div
+            className={`${styles.group} ${errors.noOfSem ? styles.invalid : ""}`}
+          >
             <label htmlFor="noOfSem">
               No. of Semester<span className={styles.required}>*</span>
             </label>
@@ -140,24 +161,36 @@ const AddCourseModal = ({ open, onClose, onSubmit, existingCourses, course }) =>
               placeholder="Enter No. of Semester"
               value={form.noOfSem}
               onChange={handleChange("noOfSem")}
+              disabled={!canSubmit || saving}
             />
             <p className={styles.error}>{errors.noOfSem}</p>
           </div>
         </div>
 
         <div className={styles.actions}>
-          <button type="button" className={styles.cancelBtn} onClick={handleCancel} disabled={saving}>
+          <button
+            type="button"
+            className={styles.cancelBtn}
+            onClick={handleCancel}
+            disabled={saving}
+          >
             Cancel
           </button>
-          <button type="submit" className={styles.submitBtn} disabled={saving}>
-            {saving
-              ? isEdit
-                ? "Updating..."
-                : "Creating..."
-              : isEdit
-                ? "Update Course"
-                : "Create Course"}
-          </button>
+          {canSubmit && (
+            <button
+              type="submit"
+              className={styles.submitBtn}
+              disabled={saving}
+            >
+              {saving
+                ? isEdit
+                  ? "Updating..."
+                  : "Creating..."
+                : isEdit
+                  ? "Update Course"
+                  : "Create Course"}
+            </button>
+          )}
         </div>
       </form>
     </Modal>

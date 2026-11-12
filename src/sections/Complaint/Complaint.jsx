@@ -6,6 +6,7 @@ import Pagination from "@mui/material/Pagination";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { toast } from "react-toastify";
 import InboxOutlinedIcon from "@mui/icons-material/InboxOutlined";
+import { hasActionAccess } from "../utils/permissions";
 
 const theme = createTheme({
   components: {
@@ -40,6 +41,8 @@ const Complaint = () => {
 
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const canView = hasActionAccess("/complaint", "view");
+  const canEdit = hasActionAccess("/complaint", "edit");
 
   useEffect(() => {
     fetchComplaints(page);
@@ -88,6 +91,9 @@ const Complaint = () => {
   const isLongMessage = (message) => (message?.length || 0) > 100;
 
   const handleStatus = async (id, status) => {
+    if (!canEdit || updatingId) return;
+
+   if (updatingId) return;
     setUpdatingId(id);
     try {
       await updateComplaintStatus(id, status);
@@ -115,6 +121,9 @@ const Complaint = () => {
 
   const startIndex = total === 0 ? 0 : (page - 1) * limit + 1;
   const endIndex = Math.min(page * limit, total);
+  if (!canView) {
+    return <div>You don't have permission to view complaints.</div>;
+  }
 
   return (
     <div className={styles.container}>
@@ -161,7 +170,9 @@ const Complaint = () => {
                               className={styles.showMoreBtn}
                               onClick={() => toggleExpanded(item._id)}
                             >
-                              {expandedIds.has(item._id) ? "Show less" : "Show more"}
+                              {expandedIds.has(item._id)
+                                ? "Show less"
+                                : "Show more"}
                             </button>
                           )}
                         </td>
@@ -169,21 +180,81 @@ const Complaint = () => {
                         <td>
                           {item.status === "pending" ? (
                             <div className={styles.actionButtons}>
-                              <button
-                                className={styles.acceptBtn}
-                                onClick={() => handleStatus(item._id, "accepted")}
-                                disabled={updatingId === item._id}
-                              >
-                                {updatingId === item._id ? "..." : "Accept"}
-                              </button>
+                              {["accepted", "rejected"].map((status) => (
+                                <div
+                                  key={status}
+                                  style={{
+                                    position: "relative",
+                                    display: "inline-block",
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    className={
+                                      status === "accepted"
+                                        ? styles.acceptBtn
+                                        : styles.rejectBtn
+                                    }
+                                    style={{
+                                      opacity: canEdit ? 1 : 0.55,
+                                      cursor: canEdit
+                                        ? "pointer"
+                                        : "not-allowed",
+                                    }}
+                                    disabled={updatingId === item._id}
+                                    onClick={() => {
+                                      if (!canEdit) return;
+                                      handleStatus(item._id, status);
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      if (!canEdit) {
+                                        const tooltip =
+                                          e.currentTarget.nextElementSibling;
+                                        tooltip.style.visibility = "visible";
+                                        tooltip.style.opacity = "1";
+                                      }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      if (!canEdit) {
+                                        const tooltip =
+                                          e.currentTarget.nextElementSibling;
+                                        tooltip.style.visibility = "hidden";
+                                        tooltip.style.opacity = "0";
+                                      }
+                                    }}
+                                  >
+                                    {updatingId === item._id
+                                      ? "..."
+                                      : status === "accepted"
+                                        ? "Accept"
+                                        : "Reject"}
+                                  </button>
 
-                              <button
-                                className={styles.rejectBtn}
-                                onClick={() => handleStatus(item._id, "rejected")}
-                                disabled={updatingId === item._id}
-                              >
-                                {updatingId === item._id ? "..." : "Reject"}
-                              </button>
+                                  {!canEdit && (
+                                    <span
+                                      style={{
+                                        position: "absolute",
+                                        top: "calc(100% + 5px)",
+                                        left: "50%",
+                                        transform: "translateX(-50%)",
+                                        background: "#1f2937",
+                                        color: "#fff",
+                                        padding: "5px 8px",
+                                        borderRadius: "4px",
+                                        fontSize: "11px",
+                                        whiteSpace: "nowrap",
+                                        visibility: "hidden",
+                                        opacity: 0,
+                                        transition: "opacity 0.15s",
+                                        zIndex: 10,
+                                        pointerEvents: "none",
+                                      }}
+                                    >
+                                      You don't have access to edit
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
                             </div>
                           ) : (
                             <span
@@ -202,7 +273,9 @@ const Complaint = () => {
                   ) : (
                     <tr>
                       <td colSpan="5" className={styles.noData}>
-                        <InboxOutlinedIcon sx={{ fontSize: 32, color: "#c2c8d4" }} />
+                        <InboxOutlinedIcon
+                          sx={{ fontSize: 32, color: "#c2c8d4" }}
+                        />
                         <p className={styles.noDataText}>No Complaints Found</p>
                       </td>
                     </tr>

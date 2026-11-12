@@ -20,6 +20,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "../../components/icons/Icons";
+import { hasActionAccess } from "../utils/permissions";
 
 const PAGE_SIZE = 5;
 
@@ -40,6 +41,13 @@ const formatMoney = (n) => Number(n).toLocaleString("en-IN");
 
 const BatchDetailsView = ({ batch, courses, onBack, onEdit, onSaveBatch }) => {
   const navigate = useNavigate();
+  const canViewStudents = hasActionAccess("/students", "view");
+  const canView = hasActionAccess("/batch", "view");
+  const canAdd = hasActionAccess("/batch", "add");
+  const canEdit = hasActionAccess("/batch", "edit");
+  const canDelete = hasActionAccess("/batch", "delete");
+
+const canShowCourseActions = canEdit || canDelete;
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   // Student's own active/inactive status - independent of the batch's own
@@ -212,18 +220,26 @@ const BatchDetailsView = ({ batch, courses, onBack, onEdit, onSaveBatch }) => {
             <option value="active">Active Students</option>
             <option value="inactive">Inactive Students</option>
           </select>
-          <button type="button" className={styles.outlineBtn} onClick={onEdit}>
-            <EditIcon width={16} height={16} />
-            Edit Batch
-          </button>
-          <button
-            type="button"
-            className={styles.primaryBtn}
-            onClick={() => setAddStudentOpen(true)}
-          >
-            <PlusIcon width={16} height={16} />
-            Add Student
-          </button>
+          {canEdit && (
+            <button
+              type="button"
+              className={styles.outlineBtn}
+              onClick={onEdit}
+            >
+              <EditIcon width={16} height={16} />
+              Edit Batch
+            </button>
+          )}
+          {canAdd && (
+            <button
+              type="button"
+              className={styles.primaryBtn}
+              onClick={() => setAddStudentOpen(true)}
+            >
+              <PlusIcon width={16} height={16} />
+              Add Student
+            </button>
+          )}
         </div>
       </div>
 
@@ -270,7 +286,9 @@ const BatchDetailsView = ({ batch, courses, onBack, onEdit, onSaveBatch }) => {
             <small>Students</small>
             <strong>{totalCount}</strong>
             <span className={styles.statFoot}>
-              {studentStatus === "active" ? "Total Active Students" : "Total Inactive Students"}
+              {studentStatus === "active"
+                ? "Total Active Students"
+                : "Total Inactive Students"}
             </span>
           </article>
 
@@ -302,7 +320,8 @@ const BatchDetailsView = ({ batch, courses, onBack, onEdit, onSaveBatch }) => {
             <small>Overall Total Amount</small>
             <strong>₹ {formatMoney(totalCourseRevenue)}</strong>
             <span className={styles.statFoot}>
-              {studentStatus === "active" ? "Active" : "Inactive"} students per course × course fee
+              {studentStatus === "active" ? "Active" : "Inactive"} students per
+              course × course fee
             </span>
           </article>
 
@@ -345,10 +364,16 @@ const BatchDetailsView = ({ batch, courses, onBack, onEdit, onSaveBatch }) => {
       <section className={styles.panel}>
         <header className={styles.panelHead}>
           <h3>Course List</h3>
-          <button type="button" className={styles.outlineBtn} onClick={onEdit}>
-            <PlusIcon width={15} height={15} />
-            Add Course
-          </button>
+          {canAdd && (
+            <button
+              type="button"
+              className={styles.outlineBtn}
+              onClick={onEdit}
+            >
+              <PlusIcon width={15} height={15} />
+              Add Course
+            </button>
+          )}
         </header>
 
         <div className={styles.tableWrap}>
@@ -361,7 +386,9 @@ const BatchDetailsView = ({ batch, courses, onBack, onEdit, onSaveBatch }) => {
                 <th>Semester 1 Amount (₹)</th>
                 <th>Semester 2 Amount (₹)</th>
                 <th>Total (₹)</th>
-                <th className={styles.actionsCol}>Action</th>
+                {canShowCourseActions && (
+                  <th className={styles.actionsCol}>Action</th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -377,26 +404,33 @@ const BatchDetailsView = ({ batch, courses, onBack, onEdit, onSaveBatch }) => {
                   <td className={styles.strongCell}>
                     {formatMoney(courseRowTotal(c))}
                   </td>
-                  <td className={styles.actionsCol}>
-                    <div className={styles.rowActions}>
-                      <button
-                        type="button"
-                        className={styles.iconBtn}
-                        aria-label={`Edit ${courseName(c.courseId)}`}
-                        onClick={onEdit}
-                      >
-                        <EditIcon width={15} height={15} />
-                      </button>
-                      <button
-                        type="button"
-                        className={`${styles.iconBtn} ${styles.danger}`}
-                        aria-label={`Remove ${courseName(c.courseId)}`}
-                        onClick={() => setCourseToRemove(c)}
-                      >
-                        <TrashIcon width={15} height={15} />
-                      </button>
-                    </div>
-                  </td>
+                  {canShowCourseActions && (
+                    <td className={styles.actionsCol}>
+                      <div className={styles.rowActions}>
+                        {canEdit && (
+                          <button
+                            type="button"
+                            className={styles.iconBtn}
+                            aria-label={`Edit ${courseName(c.courseId)}`}
+                            onClick={onEdit}
+                          >
+                            <EditIcon width={15} height={15} />
+                          </button>
+                        )}
+
+                        {canDelete && (
+                          <button
+                            type="button"
+                            className={`${styles.iconBtn} ${styles.danger}`}
+                            aria-label={`Remove ${courseName(c.courseId)}`}
+                            onClick={() => setCourseToRemove(c)}
+                          >
+                            <TrashIcon width={15} height={15} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -454,7 +488,9 @@ const BatchDetailsView = ({ batch, courses, onBack, onEdit, onSaveBatch }) => {
                   <th>Email</th>
                   <th>Phone</th>
                   <th>Joined Date</th>
-                  <th className={styles.actionsCol}>Action</th>
+                  {canViewStudents && (
+                    <th className={styles.actionsCol}>Action</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -466,16 +502,20 @@ const BatchDetailsView = ({ batch, courses, onBack, onEdit, onSaveBatch }) => {
                     <td>{s.email}</td>
                     <td>{s.mobileNo}</td>
                     <td>{formatShortDate(batch.startDate)}</td>
-                    <td className={styles.actionsCol}>
-                      <button
-                        type="button"
-                        className={styles.iconBtn}
-                        aria-label={`View ${s.name}`}
-                        onClick={() => navigate(`/students/studentview/${s._id}`)}
-                      >
-                        <EyeIcon width={15} height={15} />
-                      </button>
-                    </td>
+                    {canViewStudents && (
+                      <td className={styles.actionsCol}>
+                        <button
+                          type="button"
+                          className={styles.iconBtn}
+                          aria-label={`View ${s.name}`}
+                          onClick={() =>
+                            navigate(`/students/studentview/${s._id}`)
+                          }
+                        >
+                          <EyeIcon width={15} height={15} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -585,9 +625,18 @@ const BatchDetailsView = ({ batch, courses, onBack, onEdit, onSaveBatch }) => {
           },
         }}
       >
-        <h3 style={{ margin: "0 0 8px", fontSize: "1.05rem" }}>Remove course?</h3>
-        <p style={{ margin: "0 0 20px", color: "var(--ink-soft)", fontSize: "0.9rem" }}>
-          This removes {courseToRemove ? courseName(courseToRemove.courseId) : "this course"}{" "}
+        <h3 style={{ margin: "0 0 8px", fontSize: "1.05rem" }}>
+          Remove course?
+        </h3>
+        <p
+          style={{
+            margin: "0 0 20px",
+            color: "var(--ink-soft)",
+            fontSize: "0.9rem",
+          }}
+        >
+          This removes{" "}
+          {courseToRemove ? courseName(courseToRemove.courseId) : "this course"}{" "}
           and its pricing from this batch. This can't be undone.
         </p>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
