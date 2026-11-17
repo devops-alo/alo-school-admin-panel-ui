@@ -199,11 +199,23 @@ export const getAttendance = (
 ) => {
   let url = `/attendance/admin?limit=${limit}&page=${offset}&value=${searchtext}&courseId=${courseId}&batchId=${batchId}&date=${date}`;
 
-  if (status !== "") {
+  if (status === "flagged") {
+    // Present students whose check-in came from a laptop another student used that day
+    url += `&onLeave=false&flagged=true`;
+  } else if (status !== "") {
     url += `&onLeave=${status}`;
   }
 
   return apiService.get(url);
+};
+
+// Campus point + radius for the student check-in geofence
+export const getCampusSettingsApi = () => {
+  return apiService.get(`/attendance/campus`);
+};
+
+export const updateCampusSettingsApi = (payload) => {
+  return apiService.put(`/attendance/campus`, payload);
 };
 
 export const getAttendancerate = (date, courseId, batchId) => {
@@ -486,7 +498,8 @@ export const excelAttendance = (
   let url = `/attendance/excel?value=${searchtext}&courseId=${courseId}&batchId=${batchId}&date=${date}`;
 
   if (status !== "") {
-    url += `&onLeave=${status}`;
+    // The export has no "flagged" filter; export the present list instead
+    url += `&onLeave=${status === "flagged" ? false : status}`;
   }
 
   return apiService.get(url);

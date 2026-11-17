@@ -9,7 +9,10 @@ import Pagination from '@mui/material/Pagination';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { FormControl, InputLabel, MenuItem, Select, IconButton } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import { excelAttendance, getAttendance, getAttendancerate, getCourseBatch } from "../../api/Serviceapi";
+import { excelAttendance, getAttendance, getAttendancerate, getCourseBatch, getCampusSettingsApi } from "../../api/Serviceapi";
+import CheckInVerification from "./CheckInVerification";
+import CampusSettingsDialog from "./CampusSettingsDialog";
+import { FiMapPin, FiAlertTriangle } from "react-icons/fi";
 import CloseIcon from '@mui/icons-material/Close';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -59,6 +62,17 @@ const Attandance = () => {
     "/attendence/leaverequest",
     "view",
   );
+  // Campus geofence for student check-in (the API also limits this to admins)
+  const canEditCampus = hasActionAccess("/attendence", "edit");
+  const [campus, setCampus] = useState(null);
+  const [campusOpen, setCampusOpen] = useState(false);
+
+  useEffect(() => {
+    if (!canEditCampus) return;
+    getCampusSettingsApi()
+      .then((res) => setCampus(res?.data?.data || null))
+      .catch((err) => console.error("Campus settings:", err?.response?.data || err));
+  }, [canEditCampus]);
   const [limit, setlimit] = useState(10);
   const [totallist, settotal] = useState(0);
   const [totalpages, setpage] = useState(0);
@@ -334,8 +348,13 @@ const Attandance = () => {
     <div className={styles.container}>
       <ToastContainer />
       <div className={styles.attendancetop}>
-        <div className={styles.attendanceleft}>
+        <div className={`${styles.attendanceleft} ${styles.headingRow}`}>
           <p>Attendance</p>
+          {canEditCampus && (
+            <button className={styles.campusBtn} onClick={() => setCampusOpen(true)}>
+              <FiMapPin /> Campus Location
+            </button>
+          )}
         </div>
         <div className={styles.attendanceright}>
           <div className={styles.attendancerightdiv}>
@@ -371,6 +390,7 @@ const Attandance = () => {
                   <MenuItem value={false}>Present</MenuItem>
                   <MenuItem value={true}>Absent</MenuItem>
                   <MenuItem value={"noLeave"}>Not Checked In</MenuItem>
+                  <MenuItem value={"flagged"}>Shared Laptop (Flagged)</MenuItem>
                 </Select>
               </FormControl>
             </div>
@@ -554,6 +574,25 @@ const Attandance = () => {
           </div>
         </div>
       </div>
+      {canEditCampus && campus && !campus.configured && (
+        <div className={styles.campusWarning}>
+          <FiAlertTriangle />
+          <span>
+            Campus location is not set, so students can check in from anywhere.{" "}
+            <button type="button" onClick={() => setCampusOpen(true)}>
+              Set it now
+            </button>
+          </span>
+        </div>
+      )}
+      {canEditCampus && (
+        <CampusSettingsDialog
+          open={campusOpen}
+          onClose={() => setCampusOpen(false)}
+          campus={campus}
+          onSaved={(saved) => saved && setCampus(saved)}
+        />
+      )}
       {rateLoading ? (
         <div className={styles.attendancemiddle}>
           <div className={styles.attendancemiddlediv}>
@@ -650,6 +689,7 @@ const Attandance = () => {
               <th>Course</th>
               <th>Date</th>
               <th>In-Time</th>
+              <th>Check-in Check</th>
               <th>Break Out</th>
               <th>Break In</th>
               <th>Out Time</th>
@@ -659,7 +699,7 @@ const Attandance = () => {
           {loading ? (
             <tr>
               <td
-                colSpan="8"
+                colSpan="9"
                 className="text-center py-20 text-lg text-gray-500 font-semibold"
                 style={{ border: "none" }}
               >
@@ -735,6 +775,9 @@ const Attandance = () => {
                           --:--
                         </p>
                       )}
+                    </td>
+                    <td>
+                      <CheckInVerification item={item} formatTime={formatTime} />
                     </td>
                     <td style={{ color: item?.onLeave && "#d92d20" }}>
                       {item.breakTime?.length > 0 ? (
@@ -815,7 +858,7 @@ const Attandance = () => {
               ) : (
                 <tr>
                   <td
-                    colSpan="8"
+                    colSpan="9"
                     className="text-center py-20 text-lg text-gray-500 font-semibold "
                     style={{ border: "none" }}
                   >

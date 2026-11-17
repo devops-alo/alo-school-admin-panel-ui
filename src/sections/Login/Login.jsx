@@ -69,6 +69,34 @@ const handleClick = async (e) => {
       return;
     }
 
+    // Where this account lands: super-admin sees every page; admin and
+    // sub-admin only see the pages assigned to them in Subadmin Management.
+    const normalizeRoute = (route = "") => route.replace(/\/+$/, "").toLowerCase();
+    let landingRoute = null;
+    if (role === "super-admin") {
+      landingRoute = "/dashboard";
+    } else if (role === "admin") {
+      const dashboardAssigned = permissions.some(
+        (permission) => normalizeRoute(permission.route) === "/dashboard",
+      );
+      landingRoute = dashboardAssigned
+        ? "/dashboard"
+        : permissions.find((permission) => permission.route)?.route;
+    } else {
+      landingRoute = permissions.find(
+        (permission) => permission.route && permission.actions?.includes("view"),
+      )?.route;
+    }
+
+    // No pages assigned: there is no page to open (the catch-all route would
+    // just send them back to this screen), so say why instead of logging in.
+    if (!landingRoute) {
+      toast.error(
+        "No pages are assigned to this account yet. Ask a super admin to give it access in Subadmin Management.",
+      );
+      return;
+    }
+
     // Save login details
     sessionStorage.setItem("authToken", token);
     sessionStorage.setItem("userId", userData.userId);
@@ -85,47 +113,14 @@ const handleClick = async (e) => {
 
     setLoginUser(true);
 
-    // Super Admin: access all routes
-    if (role === "super-admin") {
-      toast.success("Logged in as Super Admin!");
-      navigate("/dashboard", { replace: true });
-      return;
-    }
-
-    // Admin: access only assigned routes
-    if (role === "admin") {
-      const dashboardAssigned = permissions.some(
-        (permission) =>
-          permission.route?.replace(/\/+$/, "").toLowerCase() === "/dashboard",
-      );
-
-      if (dashboardAssigned) {
-        toast.success("Logged in as Admin!");
-       navigate("/dashboard", { replace: true });
-      } else {
-        const firstAllowedRoute = permissions.find(
-          (permission) => permission.route,
-        )?.route;
-
-        navigate(firstAllowedRoute || "/unauthorized", {
-          replace: true,
-        });
-      }
-
-      return;
-    }
-
-    // Sub-admin: open the first route with view permission
-    const firstAllowedRoute = permissions.find(
-      (permission) => permission.route && permission.actions?.includes("view"),
-    )?.route;
-
-    if (firstAllowedRoute) {
-      toast.success("Logged in as Sub Admin!");
-      navigate(firstAllowedRoute, { replace: true });
-    } else {
-      navigate("/unauthorized", { replace: true });
-    }
+    toast.success(
+      role === "super-admin"
+        ? "Logged in as Super Admin!"
+        : role === "admin"
+          ? "Logged in as Admin!"
+          : "Logged in as Sub Admin!",
+    );
+    navigate(landingRoute, { replace: true });
   } catch (err) {
     console.error("Login failed:", err);
 
