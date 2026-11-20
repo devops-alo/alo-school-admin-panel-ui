@@ -390,7 +390,7 @@ const Attandance = () => {
                   <MenuItem value={false}>Present</MenuItem>
                   <MenuItem value={true}>Absent</MenuItem>
                   <MenuItem value={"noLeave"}>Not Checked In</MenuItem>
-                  <MenuItem value={"flagged"}>Shared Laptop (Flagged)</MenuItem>
+                  <MenuItem value={"flagged"}>Laptop Flagged</MenuItem>
                 </Select>
               </FormControl>
             </div>

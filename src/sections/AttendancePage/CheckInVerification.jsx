@@ -4,19 +4,65 @@ import CloseIcon from "@mui/icons-material/Close";
 import { FiAlertTriangle, FiCheckCircle, FiMapPin, FiImage, FiInfo } from "react-icons/fi";
 import styles from "./CheckInVerification.module.css";
 
-// Selfie, distance and shared-laptop flag for one check-in row, with a
-// details dialog. `formatTime` is the page's formatter (in-times are stored
+// Selfie, distance and the day's laptop flags for one attendance row, with a
+// details dialog. `formatTime` is the page's formatter (times are stored
 // shifted to IST, so they are shown in UTC).
+//
+// The laptop is identified only by the browser ID, sent at check-in, break
+// out, break in and check-out. A step is flagged when another student used
+// the same browser ID earlier that day ("shared"), or when it is not the
+// browser ID the student checked in with ("switched").
 
 const formatDistance = (m) =>
   m === null || m === undefined ? null : m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`;
 
-const MATCHED_BY = {
-  deviceId: "same browser on this laptop",
-  fingerprint: "same laptop (browser data cleared or identical lab PC)",
+const EVENT_LABEL = {
+  checkIn: "Check-in",
+  breakOut: "Break out",
+  breakIn: "Break in",
+  checkOut: "Check-out",
 };
 
-const shortId = (id) => (id ? (id.length > 18 ? `${id.slice(0, 18)}…` : id) : "-");
+const eventName = (event) => EVENT_LABEL[event] || EVENT_LABEL.checkIn;
+
+// "A", "A and B", "A, B and C"
+const joinWords = (list) =>
+  list.length <= 1 ? list.join("") : `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}`;
+
+const uniqueNames = (people) => [...new Set(people.map((s) => s.name || "another student"))];
+
+// Check-in plus every break / check-out, in order
+const daySteps = (item, v) => [
+  {
+    event: "checkIn",
+    at: item.inTime,
+    deviceId: v.deviceId,
+    sharedWith: v.sharedWith || [],
+    differentLaptop: false,
+  },
+  ...(item.deviceLog || []),
+];
+
+const isFlagged = (step) => step.sharedWith?.length > 0 || step.differentLaptop;
+
+// "Laptop 1" = the check-in laptop, "Laptop 2" = the next different one, ...
+const laptopNames = (steps) => {
+  const names = {};
+  steps.forEach((s) => {
+    if (s.deviceId && !names[s.deviceId]) names[s.deviceId] = `Laptop ${Object.keys(names).length + 1}`;
+  });
+  return names;
+};
+
+// Plain-language summary of the day's flags
+const summarize = (steps) => {
+  const shared = uniqueNames(steps.flatMap((s) => s.sharedWith || []));
+  const switchedAt = steps.filter((s) => s.differentLaptop).map((s) => eventName(s.event).toLowerCase());
+  const lines = [];
+  if (shared.length) lines.push(`Used the same laptop as ${joinWords(shared)}.`);
+  if (switchedAt.length) lines.push(`Used a different laptop at ${joinWords(switchedAt)}.`);
+  return { shared, switched: switchedAt.length > 0, lines };
+};
 
 const SelfieImage = ({ v, className }) => {
   if (v?.selfieUrl) return <img src={v.selfieUrl} alt="Check-in selfie" className={className} loading="lazy" />;
@@ -34,10 +80,19 @@ const CheckInVerification = ({ item, formatTime }) => {
 
   if (!v) return <span className={styles.none}>-</span>;
 
-  const flagged = v.sharedDeviceFlag && v.sharedWith?.length > 0;
-  const laterUsed = v.laterUsedBy?.length > 0;
+  const steps = daySteps(item, v);
+  const summary = summarize(steps);
+  const flagged = summary.lines.length > 0;
+  const laptops = laptopNames(steps);
+  const laterNames = uniqueNames(v.laterUsedBy || []);
   const distance = formatDistance(v.distance);
   const name = item.userDetails?.name || item.name;
+  const time = (t) => (t ? formatTime(t) : "--:--");
+
+  // Short text for the table chip
+  const chipText = summary.shared.length
+    ? `Shared laptop with ${summary.shared[0]}${summary.shared.length > 1 ? ` +${summary.shared.length - 1}` : ""}`
+    : "Switched laptop";
 
   return (
     <>
@@ -57,21 +112,14 @@ const CheckInVerification = ({ item, formatTime }) => {
             {v.faceCheck === "skipped" && <span className={styles.skipped}>Face check skipped</span>}
           </span>
           {flagged && (
-            <span className={styles.flag}>
-              <FiAlertTriangle /> Same laptop as {v.sharedWith[0].name || "another student"}
-              {v.sharedWith.length > 1 ? ` +${v.sharedWith.length - 1}` : ""}
-            </span>
-          )}
-          {!flagged && laterUsed && (
-            <span className={styles.note}>
-              <FiInfo /> Laptop later used by {v.laterUsedBy[0].name || "another student"}
-              {v.laterUsedBy.length > 1 ? ` +${v.laterUsedBy.length - 1}` : ""}
+            <span className={styles.flag} title={summary.lines.join(" ")}>
+              <FiAlertTriangle /> {chipText}
             </span>
           )}
         </span>
       </button>
 
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle className={styles.dialogTitle}>
           <span>
             Check-in details
@@ -85,99 +133,111 @@ const CheckInVerification = ({ item, formatTime }) => {
           </IconButton>
         </DialogTitle>
         <DialogContent dividers>
-          {v.selfieUrl ? (
-            <a href={v.selfieUrl} target="_blank" rel="noreferrer" className={styles.bigLink}>
-              <SelfieImage v={v} className={styles.big} />
-            </a>
-          ) : (
-            <SelfieImage v={v} className={styles.big} />
-          )}
-          {v.selfieDeleted && (
-            <p className={styles.muted}>Selfies are deleted on the 5th of the following month.</p>
-          )}
-
-          {flagged && (
-            <div className={`${styles.banner} ${styles.bannerWarn}`}>
-              <FiAlertTriangle />
-              <div>
-                <strong>Checked in from a laptop another student already used today</strong>
-                <ul>
-                  {v.sharedWith.map((s) => (
-                    <li key={String(s.attendanceId)}>
-                      {s.name || "Unknown"}
-                      {s.studentId ? ` (${s.studentId})` : ""}
-                      {s.inTime ? ` at ${formatTime(s.inTime)}` : ""}: {MATCHED_BY[s.matchedBy] || s.matchedBy}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {laterUsed && (
-            <div className={`${styles.banner} ${styles.bannerInfo}`}>
-              <FiInfo />
-              <div>
-                <strong>Other students checked in later from this laptop</strong>
-                <ul>
-                  {v.laterUsedBy.map((s) => (
-                    <li key={String(s.attendanceId)}>
-                      {s.name || "Unknown"}
-                      {s.studentId ? ` (${s.studentId})` : ""}
-                      {s.inTime ? ` at ${formatTime(s.inTime)}` : ""}: {MATCHED_BY[s.matchedBy] || s.matchedBy}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-
-          <dl className={styles.details}>
-            <dt>Face check</dt>
-            <dd>
-              {v.faceCheck === "passed" ? (
-                <span className={styles.ok}>
-                  <FiCheckCircle /> Face detected
-                </span>
+          <div className={styles.layout}>
+            <div className={styles.left}>
+              {v.selfieUrl ? (
+                <a href={v.selfieUrl} target="_blank" rel="noreferrer" className={styles.bigLink}>
+                  <SelfieImage v={v} className={styles.big} />
+                </a>
               ) : (
-                <span className={styles.skipped}>Skipped (face detector did not load) - check the selfie</span>
+                <SelfieImage v={v} className={styles.big} />
               )}
-            </dd>
-
-            <dt>Location</dt>
-            <dd>
-              {distance ? `${distance} from campus` : "Campus location was not set"}
-              {v.accuracy ? ` (±${formatDistance(v.accuracy)} accuracy)` : ""}
-              {v.latitude !== null && v.longitude !== null && (
-                <>
-                  {" · "}
-                  <a
-                    href={`https://www.google.com/maps?q=${v.latitude},${v.longitude}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    View on map
-                  </a>
-                </>
+              {v.selfieDeleted && (
+                <p className={styles.muted}>Selfies are deleted on the 5th of the following month.</p>
               )}
-            </dd>
 
-            <dt>IP address</dt>
-            <dd>{v.ip || "-"}</dd>
+              <dl className={styles.details}>
+                <dt>Face check</dt>
+                <dd>
+                  {v.faceCheck === "passed" ? (
+                    <span className={styles.ok}>
+                      <FiCheckCircle /> Face detected
+                    </span>
+                  ) : (
+                    <span className={styles.skipped}>Skipped (face detector did not load) - check the selfie</span>
+                  )}
+                </dd>
 
-            <dt>Browser ID</dt>
-            <dd className={styles.mono} title={v.deviceId}>
-              {shortId(v.deviceId)}
-            </dd>
+                <dt>Location</dt>
+                <dd>
+                  {distance ? `${distance} from campus` : "Campus location was not set"}
+                  {v.accuracy ? ` (±${formatDistance(v.accuracy)} accuracy)` : ""}
+                  {v.latitude !== null && v.longitude !== null && (
+                    <>
+                      {" · "}
+                      <a
+                        href={`https://www.google.com/maps?q=${v.latitude},${v.longitude}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        View on map
+                      </a>
+                    </>
+                  )}
+                </dd>
+              </dl>
+            </div>
 
-            <dt>Laptop fingerprint</dt>
-            <dd className={styles.mono} title={v.fingerprint || ""}>
-              {shortId(v.fingerprint)}
-            </dd>
+            <div className={styles.right}>
+              <h4 className={styles.sectionTitle}>Laptop used today</h4>
 
-            <dt>Browser</dt>
-            <dd className={styles.ua}>{v.userAgent || "-"}</dd>
-          </dl>
+              {flagged ? (
+                <div className={`${styles.summary} ${styles.summaryWarn}`}>
+                  <FiAlertTriangle />
+                  <div>
+                    {summary.lines.map((line) => (
+                      <p key={line}>{line}</p>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className={`${styles.summary} ${styles.summaryOk}`}>
+                  <FiCheckCircle />
+                  <p>Same laptop all day, not used by any other student.</p>
+                </div>
+              )}
+
+              <ol className={styles.timeline}>
+                {steps.map((step, i) => (
+                  <li key={`${step.event}-${i}`} className={isFlagged(step) ? styles.stepFlagged : styles.step}>
+                    <span className={styles.stepEvent}>{eventName(step.event)}</span>
+                    <span className={styles.stepTime}>{time(step.at)}</span>
+                    <span className={styles.laptop} title={`Browser ID: ${step.deviceId || "-"}`}>
+                      {laptops[step.deviceId] || "Unknown laptop"}
+                    </span>
+                    <span className={styles.tags}>
+                      {step.differentLaptop && <span className={styles.tag}>Different laptop</span>}
+                      {step.sharedWith?.map((s) => (
+                        <span
+                          key={String(s.attendanceId)}
+                          className={styles.tag}
+                          title={`${s.name || "Another student"}${s.studentId ? ` (${s.studentId})` : ""} used it at ${eventName(s.event).toLowerCase()}${s.inTime ? `, ${formatTime(s.inTime)}` : ""}`}
+                        >
+                          Also used by {s.name || "another student"}
+                        </span>
+                      ))}
+                      {!isFlagged(step) && (
+                        <span className={styles.ok}>
+                          <FiCheckCircle /> OK
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+
+              {laterNames.length > 0 && (
+                <p
+                  className={styles.laterNote}
+                  title={v.laterUsedBy
+                    .map((s) => `${s.name || "Another student"}: ${eventName(s.event).toLowerCase()}${s.inTime ? ` ${formatTime(s.inTime)}` : ""}`)
+                    .join("\n")}
+                >
+                  <FiInfo /> Later, {joinWords(laterNames)} used this student's laptop.
+                </p>
+              )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </>
