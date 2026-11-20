@@ -59,7 +59,7 @@ const summarize = (steps) => {
   const shared = uniqueNames(steps.flatMap((s) => s.sharedWith || []));
   const switchedAt = steps.filter((s) => s.differentLaptop).map((s) => eventName(s.event).toLowerCase());
   const lines = [];
-  if (shared.length) lines.push(`Used the same laptop as ${joinWords(shared)}.`);
+  if (shared.length) lines.push(`Used a laptop that ${joinWords(shared)} also used today.`);
   if (switchedAt.length) lines.push(`Used a different laptop at ${joinWords(switchedAt)}.`);
   return { shared, switched: switchedAt.length > 0, lines };
 };
@@ -88,6 +88,9 @@ const CheckInVerification = ({ item, formatTime }) => {
   const distance = formatDistance(v.distance);
   const name = item.userDetails?.name || item.name;
   const time = (t) => (t ? formatTime(t) : "--:--");
+  // "9:46 AM" for a check-in, "break out 1:02 PM" otherwise
+  const usedWhen = (s) =>
+    `${s.event && s.event !== "checkIn" ? `${eventName(s.event).toLowerCase()} ` : ""}${time(s.inTime)}`;
 
   // Short text for the table chip
   const chipText = summary.shared.length
@@ -207,15 +210,17 @@ const CheckInVerification = ({ item, formatTime }) => {
                     </span>
                     <span className={styles.tags}>
                       {step.differentLaptop && <span className={styles.tag}>Different laptop</span>}
-                      {step.sharedWith?.map((s) => (
+                      {step.sharedWith?.length > 0 && (
                         <span
-                          key={String(s.attendanceId)}
-                          className={styles.tag}
-                          title={`${s.name || "Another student"}${s.studentId ? ` (${s.studentId})` : ""} used it at ${eventName(s.event).toLowerCase()}${s.inTime ? `, ${formatTime(s.inTime)}` : ""}`}
+                          className={styles.sharedText}
+                          title={step.sharedWith
+                            .map((s) => `${s.name || "Another student"}${s.studentId ? ` (${s.studentId})` : ""}`)
+                            .join("\n")}
                         >
-                          Also used by {s.name || "another student"}
+                          Same laptop used earlier by{" "}
+                          {joinWords(step.sharedWith.map((s) => `${s.name || "another student"} (${usedWhen(s)})`))}
                         </span>
-                      ))}
+                      )}
                       {!isFlagged(step) && (
                         <span className={styles.ok}>
                           <FiCheckCircle /> OK

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import styles from "./feemenagement.module.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -201,6 +201,10 @@ const FeeHome = () => {
     }
   };
 
+  // The list and totals wait until the default (primary) batch is set, so the
+  // first load doesn't fetch "all batches" and race the batch-filtered fetch
+  const [filtersReady, setFiltersReady] = useState(false);
+
   useEffect(() => {
     fetchBatches()
     fetchAllCourses()
@@ -225,6 +229,8 @@ const FeeHome = () => {
       }
     } catch (error) {
       console.error("error", error.response?.data || error);
+    } finally {
+      setFiltersReady(true);
     }
   };
 
@@ -240,22 +246,26 @@ const FeeHome = () => {
   };
 
   useEffect(() => {
+    if (!filtersReady) return;
     getfeelist()
-  }, [offset, courseId, batchId, semester, searchText, studentStatus, studentFilter]);
+  }, [filtersReady, offset, courseId, batchId, semester, searchText, studentStatus, studentFilter]);
 
   const [loading, setLoading] = useState(false);
+  // Only the newest request may update the list (an older, slower one is dropped)
+  const feeListRequest = useRef(0);
   let getfeelist = async () => {
+    const requestId = ++feeListRequest.current;
     setLoading(true);
     try {
       const res = await getFee(limit, offset - 1, courseId, batchId, semester, searchText, studentStatus, discounted, feeStatusFilter)
-      console.log(res?.data?.data, 'feelist')
+      if (requestId !== feeListRequest.current) return;
       setList(res?.data?.data?.data)
       settotal(res?.data?.data?.totalCount)
     }
     catch (error) {
       console.error("error", error.response?.data || error);
     } finally {
-      setLoading(false)
+      if (requestId === feeListRequest.current) setLoading(false)
     }
   }
 
@@ -560,20 +570,24 @@ const FeeHome = () => {
   const [calc, setCalc] = useState([])
 
   useEffect(() => {
+    if (!filtersReady) return;
     calculation()
-  }, [courseId, batchId, semester, searchText, studentStatus])
+  }, [filtersReady, courseId, batchId, semester, searchText, studentStatus])
 
   const [calloading, setCallodading] = useState(false)
+  // Only the newest request may update the totals
+  const calcRequest = useRef(0);
   let calculation = async () => {
+    const requestId = ++calcRequest.current;
     setCallodading(true)
     try {
       let res = await calcfee(courseId, batchId, semester, searchText, studentStatus)
+      if (requestId !== calcRequest.current) return;
       setCalc(res.data?.data?.data?.[0] || [])
-      console.log('hjjj', res.data?.data)
     } catch (error) {
       console.log(error)
     } finally {
-      setCallodading(false)
+      if (requestId === calcRequest.current) setCallodading(false)
     }
 
 

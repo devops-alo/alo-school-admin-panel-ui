@@ -296,6 +296,13 @@
   cursor: help;
 }
 
+.sharedText {
+  color: #92400e;
+  font-weight: 600;
+  line-height: 1.45;
+  cursor: help;
+}
+
 .laterNote {
   display: flex;
   align-items: flex-start;
