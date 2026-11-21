@@ -33,20 +33,38 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Login data saved by the Login page (both storages)
+const AUTH_KEYS = ["authToken", "userId", "username", "userRole", "permissions"];
+
+// Read by the Login page to say why the user was signed out
+export const SESSION_EXPIRED_FLAG = "sessionExpired";
+
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
+    // 401 = the login token expired or is invalid (wrong email/password is a
+    // 400, so the login form's own errors never come here)
     if (error.response && error.response.status === 401) {
-      
-      localStorage.removeItem('authToken'); 
-    
-      
-      window.location.href = '/#/login';
+      // Already on the login screen: leftover requests, nothing more to do
+      if (window.location.hash.startsWith("#/login")) {
+        return Promise.reject(error);
+      }
 
-      return Promise.reject(error);
+      AUTH_KEYS.forEach((key) => {
+        sessionStorage.removeItem(key);
+        localStorage.removeItem(key);
+      });
+      sessionStorage.setItem(SESSION_EXPIRED_FLAG, "1");
+
+      // Full reload onto the login page resets the app's signed-in state
+      window.location.replace("/#/login");
+      window.location.reload();
+
+      // The page is reloading: keep the caller from showing the raw API error
+      return new Promise(() => {});
     }
 
-    return Promise.reject(error); 
+    return Promise.reject(error);
   }
 );
 
