@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import schoolLogo from "../../assets/loginPage_image/AloSchoolredesign_logo.png";
 import schoolImg from "../../assets/loginPage_image/AloSchoolboy_image.png";
 import styles from "./Login.module.css";
@@ -14,6 +14,7 @@ import {
 } from "react-icons/lu";
 import { useNavigate } from "react-router-dom";
 import { LoginUser } from '../../api/Serviceapi';
+import { SESSION_EXPIRED_FLAG } from '../../api/axiosInstance';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Loader from "../../component/loader/Loader";
@@ -24,6 +25,14 @@ const Login = ({ setLoginUser }) => {
   const [error, setError] = useState({ userName: "", passWord: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Sent here because the login token expired (see axiosInstance)
+  useEffect(() => {
+    if (sessionStorage.getItem(SESSION_EXPIRED_FLAG)) {
+      sessionStorage.removeItem(SESSION_EXPIRED_FLAG);
+      toast.info("Your session has expired. Please log in again.", { toastId: "session-expired" });
+    }
+  }, []);
 
   const navigate = useNavigate();
 

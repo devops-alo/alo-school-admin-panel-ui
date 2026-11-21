@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import styles from "./FeeDetailModal.module.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
-import { FaEdit, FaRegClock, FaEnvelope } from "react-icons/fa";
+import { FaEdit, FaRegClock, FaEnvelope, FaDownload } from "react-icons/fa";
 import { toast } from "react-toastify";
 import {
   createFee,
@@ -11,6 +11,7 @@ import {
   setStudentDiscount,
   removeStudentDiscount,
   sendFeeReceiptMail,
+  downloadFeeReceiptPdf,
 } from "../../api/Serviceapi";
 import { hasActionAccess } from "../utils/permissions";
 
@@ -47,6 +48,7 @@ const FeeDetailModal = ({ open, student, onClose, onRequestFee, onPaymentSaved }
   const [discountSaving, setDiscountSaving] = useState(false);
   const [confirmingRemoveDiscount, setConfirmingRemoveDiscount] = useState(false);
   const [sendingReceiptId, setSendingReceiptId] = useState(null);
+  const [downloadingReceiptId, setDownloadingReceiptId] = useState(null);
 
   const studentUserId = student?.userDetails?._id || student?._id;
 
@@ -261,6 +263,39 @@ const FeeDetailModal = ({ open, student, onClose, onRequestFee, onPaymentSaved }
       toast.error(err?.response?.data?.message || "Failed to send receipt email");
     } finally {
       setSendingReceiptId(null);
+    }
+  };
+
+  // Downloads the receipt PDF the API builds (same details as the receipt email)
+  const downloadReceiptForPayment = async (payment) => {
+    if (!payment?._id || downloadingReceiptId) return;
+    setDownloadingReceiptId(payment._id);
+    try {
+      const response = await downloadFeeReceiptPdf(payment._id);
+      const disposition = response?.headers?.["content-disposition"] || "";
+      const fileName = disposition.match(/filename="?([^";]+)"?/i)?.[1] || "Fee-Receipt.pdf";
+      const url = URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      console.error("Failed to download receipt:", err);
+      // The API's error comes back as a Blob when a file was asked for
+      let message = err?.response?.data?.message;
+      if (err?.response?.data instanceof Blob) {
+        try {
+          message = JSON.parse(await err.response.data.text())?.message;
+        } catch {
+          message = null;
+        }
+      }
+      toast.error(message || "Failed to download receipt");
+    } finally {
+      setDownloadingReceiptId(null);
     }
   };
 
@@ -686,6 +721,18 @@ const FeeDetailModal = ({ open, student, onClose, onRequestFee, onPaymentSaved }
                                 <FaEnvelope />
                               </button>
                             )}
+                          {h.type !== "deleted" && Number(h.paidAmount) > 0 && (
+                            <button
+                              type="button"
+                              className={styles.receiptMailBtn}
+                              aria-label="Download fee receipt"
+                              title="Download fee receipt"
+                              disabled={downloadingReceiptId === h._id}
+                              onClick={() => downloadReceiptForPayment(h)}
+                            >
+                              <FaDownload />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

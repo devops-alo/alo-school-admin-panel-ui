@@ -146,7 +146,7 @@ const CheckInVerification = ({ item, formatTime }) => {
                 <SelfieImage v={v} className={styles.big} />
               )}
               {v.selfieDeleted && (
-                <p className={styles.muted}>Selfies are deleted on the 5th of the following month.</p>
+                <p className={styles.muted}>Selfies are deleted 14 days after check-in.</p>
               )}
 
               <dl className={styles.details}>

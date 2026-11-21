@@ -1,6 +1,7 @@
 // src/api/userService.js
 import { FaCertificate } from "react-icons/fa6";
 import apiService from "./apiService";
+import axiosInstance from "./axiosInstance";
 import Form from "antd/es/form/Form";
 import { useState } from "react";
 
@@ -314,6 +315,12 @@ export const getPaymentHistory = (userId) => {
 
 export const sendFeeReceiptMail = (paymentLogId) => {
   return apiService.post(`/fee/receipt-mail`, { paymentLogId });
+};
+
+// apiService.get treats its 2nd arg as query params, so call axios directly
+// to ask for the PDF as a Blob.
+export const downloadFeeReceiptPdf = (paymentLogId) => {
+  return axiosInstance.get(`/fee/receipt-pdf/${paymentLogId}`, { responseType: "blob" });
 };
 
 // Student discount - add/edit share the same PUT (whatever amount is sent
